@@ -4,7 +4,7 @@ import * as core from '@actions/core'
 import * as glob from '@actions/glob'
 
 import {CacheEntryListener, CacheListener} from './cache-reporting'
-import {cacheDebug, hashFileNames, isCacheDebuggingEnabled, restoreCache, saveCache, tryDelete} from './cache-utils'
+import {cacheDebug, hashFileNames, isCacheDebuggingEnabled, RemoteCacheAccessor, tryDelete} from './cache-utils'
 
 import {BuildResult, loadBuildResults} from '../build-results'
 import {CacheConfig, ACTION_METADATA_DIR} from '../configuration'
@@ -76,26 +76,34 @@ class ExtractedCacheEntryDefinition {
     }
 }
 
+export interface EntryExtractor {
+    restore(listener: CacheListener): Promise<void>
+    extract(listener: CacheListener): Promise<void>
+}
+
 /**
  * Caches and restores the entire Gradle User Home directory, extracting entries containing common artifacts
  * for more efficient storage.
  */
-abstract class AbstractEntryExtractor {
+abstract class AbstractEntryExtractor implements EntryExtractor {
     protected readonly cacheConfig: CacheConfig
     protected readonly gradleUserHome: string
     private extractorName: string
 
     private readonly cacheKeyGenerator: CacheKeyGenerator
+    private readonly cacheAccessor: RemoteCacheAccessor
 
     constructor(
         gradleUserHome: string,
         extractorName: string,
         cacheConfig: CacheConfig,
+        cacheAccessor: RemoteCacheAccessor,
         cacheKeyGenerator: CacheKeyGenerator
     ) {
         this.gradleUserHome = gradleUserHome
         this.extractorName = extractorName
         this.cacheConfig = cacheConfig
+        this.cacheAccessor = cacheAccessor
         this.cacheKeyGenerator = cacheKeyGenerator
     }
 
@@ -140,7 +148,7 @@ abstract class AbstractEntryExtractor {
         pattern: string,
         listener: CacheEntryListener
     ): Promise<ExtractedCacheEntry> {
-        const restoredEntry = await restoreCache(pattern.split('\n'), cacheKey, [], listener)
+        const restoredEntry = await this.cacheAccessor.restoreCache(pattern.split('\n'), cacheKey, [], listener)
         if (restoredEntry) {
             return new ExtractedCacheEntry(artifactType, pattern, cacheKey)
         } else {
@@ -239,7 +247,7 @@ abstract class AbstractEntryExtractor {
             cacheDebug(`No change to previously restored ${artifactType}. Not saving.`)
             entryListener.markNotSaved('contents unchanged')
         } else {
-            await saveCache(pattern.split('\n'), cacheKey, entryListener)
+            await this.cacheAccessor.saveCache(pattern.split('\n'), cacheKey, entryListener)
         }
 
         for (const file of matchingFiles) {
@@ -316,9 +324,10 @@ export class GradleHomeEntryExtractor extends AbstractEntryExtractor {
     constructor(
         gradleUserHome: string,
         cacheConfig: CacheConfig,
-        cacheKeyGenerator: CacheKeyGenerator = new CacheKeyGenerator()
+        cacheAccessor: RemoteCacheAccessor,
+        cacheKeyGenerator: CacheKeyGenerator
     ) {
-        super(gradleUserHome, 'gradle-home', cacheConfig, cacheKeyGenerator)
+        super(gradleUserHome, 'gradle-home', cacheConfig, cacheAccessor, cacheKeyGenerator)
     }
 
     async extract(listener: CacheListener): Promise<void> {
@@ -379,9 +388,10 @@ export class ConfigurationCacheEntryExtractor extends AbstractEntryExtractor {
     constructor(
         gradleUserHome: string,
         cacheConfig: CacheConfig,
-        cacheKeyGenerator: CacheKeyGenerator = new CacheKeyGenerator()
+        cacheAccessor: RemoteCacheAccessor,
+        cacheKeyGenerator: CacheKeyGenerator
     ) {
-        super(gradleUserHome, 'configuration-cache', cacheConfig, cacheKeyGenerator)
+        super(gradleUserHome, 'configuration-cache', cacheConfig, cacheAccessor, cacheKeyGenerator)
     }
 
     /**

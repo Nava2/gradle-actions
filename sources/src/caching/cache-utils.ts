@@ -30,47 +30,52 @@ export function hashStrings(values: string[]): string {
     return hash.digest('hex')
 }
 
-export async function restoreCache(
-    cachePath: string[],
-    cacheKey: string,
-    cacheRestoreKeys: string[],
-    listener: CacheEntryListener
-): Promise<cache.CacheEntry | undefined> {
-    listener.markRequested(cacheKey, cacheRestoreKeys)
-    try {
-        const startTime = Date.now()
-        // Only override the read timeout if the SEGMENT_DOWNLOAD_TIMEOUT_MINS env var has NOT been set
-        const cacheRestoreOptions = process.env[SEGMENT_DOWNLOAD_TIMEOUT_VAR]
-            ? {}
-            : {segmentTimeoutInMs: SEGMENT_DOWNLOAD_TIMEOUT_DEFAULT}
-        const restoredEntry = await cache.restoreCache(cachePath, cacheKey, cacheRestoreKeys, cacheRestoreOptions)
-        if (restoredEntry !== undefined) {
-            const restoreTime = Date.now() - startTime
-            listener.markRestored(restoredEntry.key, restoredEntry.size, restoreTime)
-            core.info(`Restored cache entry with key ${cacheKey} to ${cachePath.join()} in ${restoreTime}ms`)
+/**
+ * Provides access to a remote cache (e.g. Github Actions cache)
+ */
+export class RemoteCacheAccessor {
+    async restoreCache(
+        cachePath: string[],
+        cacheKey: string,
+        cacheRestoreKeys: string[],
+        listener: CacheEntryListener
+    ): Promise<cache.CacheEntry | undefined> {
+        listener.markRequested(cacheKey, cacheRestoreKeys)
+        try {
+            const startTime = Date.now()
+            // Only override the read timeout if the SEGMENT_DOWNLOAD_TIMEOUT_MINS env var has NOT been set
+            const cacheRestoreOptions = process.env[SEGMENT_DOWNLOAD_TIMEOUT_VAR]
+                ? {}
+                : {segmentTimeoutInMs: SEGMENT_DOWNLOAD_TIMEOUT_DEFAULT}
+            const restoredEntry = await cache.restoreCache(cachePath, cacheKey, cacheRestoreKeys, cacheRestoreOptions)
+            if (restoredEntry !== undefined) {
+                const restoreTime = Date.now() - startTime
+                listener.markRestored(restoredEntry.key, restoredEntry.size, restoreTime)
+                core.info(`Restored cache entry with key ${cacheKey} to ${cachePath.join()} in ${restoreTime}ms`)
+            }
+            return restoredEntry
+        } catch (error) {
+            listener.markNotRestored((error as Error).message)
+            handleCacheFailure(error, `Failed to restore ${cacheKey}`)
+            return undefined
         }
-        return restoredEntry
-    } catch (error) {
-        listener.markNotRestored((error as Error).message)
-        handleCacheFailure(error, `Failed to restore ${cacheKey}`)
-        return undefined
     }
-}
 
-export async function saveCache(cachePath: string[], cacheKey: string, listener: CacheEntryListener): Promise<void> {
-    try {
-        const startTime = Date.now()
-        const savedEntry = await cache.saveCache(cachePath, cacheKey)
-        const saveTime = Date.now() - startTime
-        listener.markSaved(savedEntry.key, savedEntry.size, saveTime)
-        core.info(`Saved cache entry with key ${cacheKey} from ${cachePath.join()} in ${saveTime}ms`)
-    } catch (error) {
-        if (error instanceof cache.ReserveCacheError) {
-            listener.markAlreadyExists(cacheKey)
-        } else {
-            listener.markNotSaved((error as Error).message)
+    async saveCache(cachePath: string[], cacheKey: string, listener: CacheEntryListener): Promise<void> {
+        try {
+            const startTime = Date.now()
+            const savedEntry = await cache.saveCache(cachePath, cacheKey)
+            const saveTime = Date.now() - startTime
+            listener.markSaved(savedEntry.key, savedEntry.size, saveTime)
+            core.info(`Saved cache entry with key ${cacheKey} from ${cachePath.join()} in ${saveTime}ms`)
+        } catch (error) {
+            if (error instanceof cache.ReserveCacheError) {
+                listener.markAlreadyExists(cacheKey)
+            } else {
+                listener.markNotSaved((error as Error).message)
+            }
+            handleCacheFailure(error, `Failed to save cache entry with path '${cachePath}' and key: ${cacheKey}`)
         }
-        handleCacheFailure(error, `Failed to save cache entry with path '${cachePath}' and key: ${cacheKey}`)
     }
 }
 

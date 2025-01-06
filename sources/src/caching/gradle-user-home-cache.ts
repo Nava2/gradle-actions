@@ -6,9 +6,9 @@ import path from 'path'
 import fs from 'fs'
 import {CacheKeyGenerator} from './cache-key'
 import {CacheListener} from './cache-reporting'
-import {saveCache, restoreCache, cacheDebug, isCacheDebuggingEnabled, tryDelete} from './cache-utils'
+import {cacheDebug, isCacheDebuggingEnabled, RemoteCacheAccessor, tryDelete} from './cache-utils'
 import {CacheConfig, ACTION_METADATA_DIR} from '../configuration'
-import {GradleHomeEntryExtractor, ConfigurationCacheEntryExtractor} from './gradle-home-extry-extractor'
+import {GradleHomeEntryExtractor, ConfigurationCacheEntryExtractor, EntryExtractor} from './gradle-home-extry-extractor'
 import {getPredefinedToolchains, mergeToolchainContent, readResourceFileAsString} from './gradle-user-home-utils'
 
 const RESTORED_CACHE_KEY_KEY = 'restored-cache-key'
@@ -23,15 +23,19 @@ export class GradleUserHomeCache {
 
     private readonly cacheKeyGenerator: CacheKeyGenerator
 
+    private readonly cacheAccessor: RemoteCacheAccessor
+
     constructor(
         userHome: string,
         gradleUserHome: string,
         cacheConfig: CacheConfig,
+        cacheAccessor: RemoteCacheAccessor,
         cacheKeyGenerator: CacheKeyGenerator
     ) {
         this.userHome = userHome
         this.gradleUserHome = gradleUserHome
         this.cacheConfig = cacheConfig
+        this.cacheAccessor = cacheAccessor
         this.cacheKeyGenerator = cacheKeyGenerator
     }
 
@@ -69,7 +73,12 @@ export class GradleUserHomeCache {
         )
 
         const cachePath = this.getCachePath()
-        const cacheResult = await restoreCache(cachePath, cacheKey.key, cacheKey.restoreKeys, entryListener)
+        const cacheResult = await this.cacheAccessor.restoreCache(
+            cachePath,
+            cacheKey.key,
+            cacheKey.restoreKeys,
+            entryListener
+        )
         if (!cacheResult) {
             core.info(`${this.cacheDescription} cache not found. Will initialize empty.`)
             return
@@ -89,8 +98,11 @@ export class GradleUserHomeCache {
      */
     async afterRestore(listener: CacheListener): Promise<void> {
         await this.debugReportGradleUserHomeSize('as restored from cache')
-        await new GradleHomeEntryExtractor(this.gradleUserHome, this.cacheConfig).restore(listener)
-        await new ConfigurationCacheEntryExtractor(this.gradleUserHome, this.cacheConfig).restore(listener)
+
+        for (const extractor of this.createExtractors()) {
+            await extractor.restore(listener)
+        }
+
         await this.deleteExcludedPaths()
         await this.debugReportGradleUserHomeSize('after restoring common artifacts')
     }
@@ -128,7 +140,7 @@ export class GradleUserHomeCache {
         }
 
         const cachePath = this.getCachePath()
-        await saveCache(cachePath, cacheKey, gradleHomeEntryListener)
+        await this.cacheAccessor.saveCache(cachePath, cacheKey, gradleHomeEntryListener)
         return
     }
 
@@ -138,10 +150,7 @@ export class GradleUserHomeCache {
     async beforeSave(listener: CacheListener): Promise<void> {
         await this.debugReportGradleUserHomeSize('before saving common artifacts')
         await this.deleteExcludedPaths()
-        await Promise.all([
-            new GradleHomeEntryExtractor(this.gradleUserHome, this.cacheConfig).extract(listener),
-            new ConfigurationCacheEntryExtractor(this.gradleUserHome, this.cacheConfig).extract(listener)
-        ])
+        await Promise.all(this.createExtractors().map(async it => it.extract(listener)))
         await this.debugReportGradleUserHomeSize(
             "after extracting common artifacts (only 'caches' and 'notifications' will be stored)"
         )
@@ -166,6 +175,23 @@ export class GradleUserHomeCache {
                 await tryDelete(toDelete)
             }
         }
+    }
+
+    private createExtractors(): EntryExtractor[] {
+        return [
+            new GradleHomeEntryExtractor(
+                this.gradleUserHome,
+                this.cacheConfig,
+                this.cacheAccessor,
+                this.cacheKeyGenerator
+            ),
+            new ConfigurationCacheEntryExtractor(
+                this.gradleUserHome,
+                this.cacheConfig,
+                this.cacheAccessor,
+                this.cacheKeyGenerator
+            )
+        ]
     }
 
     /**

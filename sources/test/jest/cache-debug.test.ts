@@ -3,6 +3,7 @@ import * as fs from 'fs'
 import {GradleUserHomeCache} from "../../src/caching/gradle-user-home-cache"
 import {CacheConfig} from "../../src/configuration"
 import { CacheKeyGenerator } from '../../src/caching/cache-key'
+import { RemoteCacheAccessor } from '../../src/caching/cache-utils'
 
 const testTmp = 'test/jest/tmp'
 fs.rmSync(testTmp, {recursive: true, force: true})
@@ -13,7 +14,7 @@ describe("--info and --stacktrace", () => {
             const emptyGradleHome = `${testTmp}/empty-gradle-home`
             fs.mkdirSync(emptyGradleHome, {recursive: true})
 
-            const stateCache = new GradleUserHomeCache("ignored", emptyGradleHome, new CacheConfig(), new CacheKeyGenerator())
+            const stateCache = new GradleUserHomeCache("ignored", emptyGradleHome, new CacheConfig(), new RemoteCacheAccessor(), new CacheKeyGenerator())
             stateCache.configureInfoLogLevel()
 
             expect(fs.readFileSync(path.resolve(emptyGradleHome, "gradle.properties"), 'utf-8'))
@@ -26,7 +27,7 @@ describe("--info and --stacktrace", () => {
             fs.mkdirSync(existingGradleHome, {recursive: true})
             fs.writeFileSync(path.resolve(existingGradleHome, "gradle.properties"), "org.gradle.logging.level=debug\n")
 
-            const stateCache = new GradleUserHomeCache("ignored", existingGradleHome, new CacheConfig(), new CacheKeyGenerator())
+            const stateCache = new GradleUserHomeCache("ignored", existingGradleHome, new CacheConfig(), new RemoteCacheAccessor(), new CacheKeyGenerator())
             stateCache.configureInfoLogLevel()
 
             expect(fs.readFileSync(path.resolve(existingGradleHome, "gradle.properties"), 'utf-8'))
