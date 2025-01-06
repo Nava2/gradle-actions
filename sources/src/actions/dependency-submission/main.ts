@@ -7,8 +7,8 @@ import {DependencyGraphConfig, DependencyGraphOption, GradleExecutionConfig, set
 import {saveDeprecationState} from '../../deprecation-collector'
 import {handleMainActionError} from '../../errors'
 import {SetupGradleAction} from '../../setup-gradle'
-import {GradleProvisioner} from '../../execution/provision'
-import {GradleExecutableExecutor} from '../../execution/gradle'
+import {gradleEnv} from '../../env/github-action'
+import {setupDependencies} from '../../inject'
 
 /**
  * The main entry point for the action, called by Github Actions for the step.
@@ -17,8 +17,11 @@ export async function run(): Promise<void> {
     try {
         setActionId('gradle/actions/dependency-submission')
 
+        const dependencies = setupDependencies(gradleEnv)
+        const {gradleExecutor, gradleProvisioner} = dependencies
+
         // Configure Gradle environment (Gradle User Home)
-        await SetupGradleAction.create().setup()
+        await SetupGradleAction.create(dependencies).setup()
 
         // Capture the enabled state of dependency-graph
         const originallyEnabled = process.env['GITHUB_DEPENDENCY_GRAPH_ENABLED']
@@ -45,8 +48,6 @@ export async function run(): Promise<void> {
         `
         const args: string[] = parseArgsStringToArgv(executionArgs)
 
-        const gradleExecutor = new GradleExecutableExecutor()
-        const gradleProvisioner = new GradleProvisioner(gradleExecutor)
         await gradle.provisionAndMaybeExecute({
             gradleProvisioner,
             gradleExecutor,

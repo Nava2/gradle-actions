@@ -1,7 +1,6 @@
-import * as github from '@actions/github'
-
 import {CacheConfig, getJobMatrix} from '../configuration'
 import {hashStrings} from './cache-utils'
+import {GradleEnv} from '../env/env'
 
 const CACHE_PROTOCOL_VERSION = 'v1'
 
@@ -30,6 +29,12 @@ export class CacheKey {
  * Provides generation fascilities for [CacheKey] values.
  */
 export class CacheKeyGenerator {
+    private readonly env: GradleEnv
+
+    constructor(env: GradleEnv) {
+        this.env = env
+    }
+
     /**
      * Generates a cache key specific to the current job execution.
      * The key is constructed from the following inputs (with some user overrides):
@@ -82,7 +87,7 @@ export class CacheKeyGenerator {
     }
 
     private getCacheKeyJob(): string {
-        return process.env[CACHE_KEY_JOB_VAR] || github.context.job
+        return process.env[CACHE_KEY_JOB_VAR] || this.env.context.jobIdentifier
     }
 
     private getCacheKeyJobInstance(): string {
@@ -93,13 +98,13 @@ export class CacheKeyGenerator {
 
         // By default, we hash the workflow name and the full `matrix` data for the run, to uniquely identify this job invocation
         // The only way we can obtain the `matrix` data is via the `workflow-job-context` parameter in action.yml.
-        const workflowName = github.context.workflow
+        const workflowName = this.env.context.workflowIdentifier
         const workflowJobContext = getJobMatrix()
         return hashStrings([workflowName, workflowJobContext])
     }
 
     private getCacheKeyJobExecution(): string {
         // Used to associate a cache key with a particular execution (default is bound to the git commit sha)
-        return process.env[CACHE_KEY_JOB_EXECUTION_VAR] || github.context.sha
+        return process.env[CACHE_KEY_JOB_EXECUTION_VAR] || this.env.context.gitRef
     }
 }

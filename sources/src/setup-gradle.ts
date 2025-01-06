@@ -9,20 +9,11 @@ import * as buildScan from './develocity/build-scan'
 import {loadBuildResults, markBuildResultsProcessed} from './build-results'
 import {CacheListener, generateCachingReport} from './caching/cache-reporting'
 import {DaemonController} from './daemon-controller'
-import {
-    BuildScanConfig,
-    CacheConfig,
-    SummaryConfig,
-    WrapperValidationConfig,
-    getWorkspaceDirectory
-} from './configuration'
+import {BuildScanConfig, SummaryConfig, WrapperValidationConfig, getWorkspaceDirectory} from './configuration'
 import * as wrapperValidator from './wrapper-validation/wrapper-validator'
-import {RemoteCacheAccessor} from './caching/cache-utils'
-import {CacheKeyGenerator} from './caching/cache-key'
 import {CacheContentFactory} from './caching/caches'
-import {CacheCleaner} from './caching/cache-cleaner'
-import {GradleProvisioner} from './execution/provision'
-import {GradleExecutableExecutor} from './execution/gradle'
+import {GradleEnv} from './env/env'
+import {Dependencies} from './inject'
 
 const GRADLE_SETUP_VAR = 'GRADLE_BUILD_ACTION_SETUP_COMPLETED'
 const USER_HOME = 'USER_HOME'
@@ -33,7 +24,7 @@ const CACHE_LISTENER = 'CACHE_LISTENER'
  * Sets up Gradle in the environment to execute a build.
  */
 export class SetupGradleAction {
-    private readonly cacheConfig: CacheConfig
+    private readonly env: GradleEnv
     private readonly buildScanConfig: BuildScanConfig
     private readonly wrapperValidationConfig: WrapperValidationConfig
     private readonly summaryConfig: SummaryConfig
@@ -41,32 +32,26 @@ export class SetupGradleAction {
     private readonly cacheContentFactory: CacheContentFactory
 
     constructor(
-        cacheConfig: CacheConfig,
+        env: GradleEnv,
         buildScanConfig: BuildScanConfig,
         wrapperValidationConfig: WrapperValidationConfig,
         summaryConfig: SummaryConfig,
         cacheContentFactory: CacheContentFactory
     ) {
-        this.cacheConfig = cacheConfig
+        this.env = env
         this.buildScanConfig = buildScanConfig
         this.wrapperValidationConfig = wrapperValidationConfig
         this.summaryConfig = summaryConfig
         this.cacheContentFactory = cacheContentFactory
     }
 
-    static create(): SetupGradleAction {
-        const cacheConfig = new CacheConfig()
+    static create(dependencies: Dependencies): SetupGradleAction {
         return new SetupGradleAction(
-            cacheConfig,
-            new BuildScanConfig(),
-            new WrapperValidationConfig(),
-            new SummaryConfig(),
-            new CacheContentFactory(
-                cacheConfig,
-                new RemoteCacheAccessor(),
-                new CacheKeyGenerator(),
-                new CacheCleaner(new GradleProvisioner(new GradleExecutableExecutor()))
-            )
+            dependencies.env,
+            dependencies.buildScanConfig,
+            dependencies.wrapperValidationConfig,
+            dependencies.summaryConfig,
+            dependencies.cacheContentFactory
         )
     }
 
@@ -93,7 +78,7 @@ export class SetupGradleAction {
             gradleUserHome
         })
 
-        const cacheListener = new CacheListener()
+        const cacheListener = new CacheListener(this.env)
         await cacheContent.restore(cacheListener)
 
         core.saveState(CACHE_LISTENER, cacheListener.stringify())
@@ -116,7 +101,7 @@ export class SetupGradleAction {
 
         const userHome = core.getState(USER_HOME)
         const gradleUserHome = core.getState(GRADLE_USER_HOME)
-        const cacheListener = CacheListener.rehydrate(core.getState(CACHE_LISTENER))
+        const cacheListener = CacheListener.rehydrate(this.env, core.getState(CACHE_LISTENER))
 
         const daemonController = new DaemonController(buildResults)
 

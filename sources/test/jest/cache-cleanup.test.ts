@@ -1,15 +1,17 @@
 import * as exec from '@actions/exec'
-import * as core from '@actions/core'
 import * as glob from '@actions/glob'
 import fs from 'fs'
 import path from 'path'
-import {CacheCleaner} from '../../src/caching/cache-cleaner'
+import { expect, test, jest } from '@jest/globals'
+
+import { CacheCleaner } from '../../src/caching/cache-cleaner'
 import { GradleProvisioner } from '../../src/execution/provision'
 import { GradleExecutableExecutor } from '../../src/execution/gradle'
+import { gradleEnv } from '../../src/env/github-action'
 
 jest.setTimeout(120000)
 
-const cacheCleaner = new CacheCleaner(new GradleProvisioner(new GradleExecutableExecutor()))
+const cacheCleaner = new CacheCleaner(gradleEnv, new GradleProvisioner(gradleEnv, new GradleExecutableExecutor()))
 
 test('will cleanup unused dependency jars and build-cache entries', async () => {
     const projectRoot = prepareTestProject()
@@ -41,7 +43,6 @@ test('will cleanup unused gradle versions', async () => {
     const projectRoot = prepareTestProject()
     const gradleUserHome = path.resolve(projectRoot, 'HOME')
     const tmpDir = path.resolve(projectRoot, 'tmp')
-    const cacheCleaner = new CacheCleaner(gradleUserHome, tmpDir)
 
     // Initialize HOME with 2 different Gradle versions
     await runGradleWrapperBuild(projectRoot, 'build')

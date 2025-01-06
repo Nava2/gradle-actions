@@ -1,4 +1,3 @@
-import * as core from '@actions/core'
 import {
     CacheListener,
     EXISTING_GRADLE_HOME,
@@ -12,6 +11,7 @@ import {CacheConfig} from '../configuration'
 import {BuildResults} from '../build-results'
 import {CacheKeyGenerator} from './cache-key'
 import {RemoteCacheAccessor} from './cache-utils'
+import {GradleEnv, GradleEnvLogger} from '../env/env'
 
 const CACHE_RESTORED_VAR = 'GRADLE_BUILD_ACTION_CACHE_RESTORED'
 
@@ -19,17 +19,20 @@ const CACHE_RESTORED_VAR = 'GRADLE_BUILD_ACTION_CACHE_RESTORED'
  * Provides a small factory for setting up `CacheContent` to easily create new instances.
  */
 export class CacheContentFactory {
+    private readonly env: GradleEnv
     private readonly cacheConfig: CacheConfig
     private readonly cacheAccessor: RemoteCacheAccessor
     private readonly cacheKeyGenerator: CacheKeyGenerator
     private readonly cacheCleaner: CacheCleaner
 
     constructor(
+        env: GradleEnv,
         cacheConfig: CacheConfig,
         cacheAccessor: RemoteCacheAccessor,
         cacheKeyGenerator: CacheKeyGenerator,
         cacheCleaner: CacheCleaner
     ) {
+        this.env = env
         this.cacheConfig = cacheConfig
         this.cacheAccessor = cacheAccessor
         this.cacheKeyGenerator = cacheKeyGenerator
@@ -38,6 +41,7 @@ export class CacheContentFactory {
 
     create({userHome, gradleUserHome}: {userHome: string; gradleUserHome: string}): CacheContent {
         return new CacheContent({
+            env: this.env,
             userHome,
             gradleUserHome,
             cacheConfig: this.cacheConfig,
@@ -58,8 +62,11 @@ export class CacheContent {
     private readonly cacheCleaner: CacheCleaner
     private readonly userHome: string
     private readonly gradleUserHome: string
+    private readonly env: GradleEnv
+    private readonly log: GradleEnvLogger
 
     constructor({
+        env,
         userHome,
         gradleUserHome,
         cacheConfig,
@@ -67,6 +74,7 @@ export class CacheContent {
         cacheKeyGenerator,
         cacheCleaner
     }: {
+        env: GradleEnv
         userHome: string
         gradleUserHome: string
         cacheConfig: CacheConfig
@@ -80,20 +88,22 @@ export class CacheContent {
         this.cacheAccessor = cacheAccessor
         this.cacheKeyGenerator = cacheKeyGenerator
         this.cacheCleaner = cacheCleaner
+        this.env = env
+        this.log = env.log
     }
 
     async restore(cacheListener: CacheListener): Promise<void> {
         // Bypass restore cache on all but first action step in workflow.
         if (process.env[CACHE_RESTORED_VAR]) {
-            core.info('Cache only restored on first action step.')
+            this.log.info('Cache only restored on first action step.')
             return
         }
-        core.exportVariable(CACHE_RESTORED_VAR, true)
+        this.env.exportVariable(CACHE_RESTORED_VAR, true.toString())
 
         const gradleStateCache = this.createGradleHomeCache()
 
         if (this.cacheConfig.isCacheDisabled()) {
-            core.info('Cache is disabled: will not restore state from previous builds.')
+            this.log.info('Cache is disabled: will not restore state from previous builds.')
             // Initialize the Gradle User Home even when caching is disabled.
             gradleStateCache.init()
             cacheListener.setDisabled()
@@ -102,31 +112,31 @@ export class CacheContent {
 
         if (gradleStateCache.cacheOutputExists()) {
             if (!this.cacheConfig.isCacheOverwriteExisting()) {
-                core.info('Gradle User Home already exists: will not restore from cache.')
+                this.log.info('Gradle User Home already exists: will not restore from cache.')
                 // Initialize pre-existing Gradle User Home.
                 gradleStateCache.init()
                 cacheListener.setDisabled(EXISTING_GRADLE_HOME)
                 return
             }
-            core.info('Gradle User Home already exists: will overwrite with cached contents.')
+            this.log.info('Gradle User Home already exists: will overwrite with cached contents.')
         }
 
         gradleStateCache.init()
         // Mark the state as restored so that post-action will perform save.
-        core.saveState(CACHE_RESTORED_VAR, true)
+        this.env.state.set(CACHE_RESTORED_VAR, true.toString())
 
         if (this.cacheConfig.isCacheCleanupEnabled()) {
-            core.info('Preparing cache for cleanup.')
+            this.log.info('Preparing cache for cleanup.')
             await this.cacheCleaner.prepare()
         }
 
         if (this.cacheConfig.isCacheWriteOnly()) {
-            core.info('Cache is write-only: will not restore from cache.')
+            this.log.info('Cache is write-only: will not restore from cache.')
             cacheListener.setWriteOnly()
             return
         }
 
-        await core.group('Restore Gradle state from cache', async () => {
+        await this.env.exec.group('Restore Gradle state from cache', async () => {
             await gradleStateCache.restore(cacheListener)
         })
     }
@@ -137,39 +147,39 @@ export class CacheContent {
         buildResults: BuildResults
     ): Promise<void> {
         if (this.cacheConfig.isCacheDisabled()) {
-            core.info('Cache is disabled: will not save state for later builds.')
+            this.log.info('Cache is disabled: will not save state for later builds.')
             return
         }
 
-        if (!core.getState(CACHE_RESTORED_VAR)) {
-            core.info('Cache will not be saved: not restored in main action step.')
+        if (!this.env.state.get(CACHE_RESTORED_VAR)) {
+            this.log.info('Cache will not be saved: not restored in main action step.')
             return
         }
 
         if (this.cacheConfig.isCacheReadOnly()) {
-            core.info('Cache is read-only: will not save state for use in subsequent builds.')
+            this.log.info('Cache is read-only: will not save state for use in subsequent builds.')
             cacheListener.setReadOnly()
             return
         }
 
-        await core.group('Stopping Gradle daemons', async () => {
+        await this.env.exec.group('Stopping Gradle daemons', async () => {
             await daemonController.stopAllDaemons()
         })
 
         if (this.cacheConfig.isCacheCleanupEnabled()) {
             if (buildResults.anyConfigCacheHit()) {
-                core.info('Not performing cache-cleanup due to config-cache reuse')
+                this.log.info('Not performing cache-cleanup due to config-cache reuse')
                 cacheListener.setCacheCleanupDisabled(CLEANUP_DISABLED_DUE_TO_CONFIG_CACHE_HIT)
             } else if (this.cacheConfig.shouldPerformCacheCleanup(buildResults.anyFailed())) {
                 cacheListener.setCacheCleanupEnabled()
                 await this.performCacheCleanup()
             } else {
-                core.info('Not performing cache-cleanup due to build failure')
+                this.log.info('Not performing cache-cleanup due to build failure')
                 cacheListener.setCacheCleanupDisabled(CLEANUP_DISABLED_DUE_TO_FAILURE)
             }
         }
 
-        await core.group('Caching Gradle state', async () => {
+        await this.env.exec.group('Caching Gradle state', async () => {
             return this.createGradleHomeCache().save(cacheListener)
         })
     }
@@ -178,12 +188,13 @@ export class CacheContent {
         try {
             await this.cacheCleaner.forceCleanup(this.gradleUserHome, process.env['RUNNER_TEMP']!)
         } catch (e) {
-            core.warning(`Cache cleanup failed. Will continue. ${String(e)}`)
+            this.log.warning(`Cache cleanup failed. Will continue. ${String(e)}`)
         }
     }
 
     private createGradleHomeCache(): GradleUserHomeCache {
         return new GradleUserHomeCache(
+            this.env,
             this.userHome,
             this.gradleUserHome,
             this.cacheConfig,

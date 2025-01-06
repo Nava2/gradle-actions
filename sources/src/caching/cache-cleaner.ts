@@ -1,26 +1,27 @@
-import * as core from '@actions/core'
-import * as exec from '@actions/exec'
-
 import fs from 'fs'
 import path from 'path'
 import {GradleProvisioner} from '../execution/provision'
 
+import {GradleEnv} from '../env/env'
+
 export class CacheCleaner {
     private readonly gradleProvisioner: GradleProvisioner
+    private readonly env: GradleEnv
 
-    constructor(gradleProvisioner: GradleProvisioner) {
+    constructor(env: GradleEnv, gradleProvisioner: GradleProvisioner) {
+        this.env = env
         this.gradleProvisioner = gradleProvisioner
     }
 
     async prepare(): Promise<string> {
         // Save the current timestamp
         const timestamp = Date.now().toString()
-        core.saveState('clean-timestamp', timestamp)
+        this.env.state.set('clean-timestamp', timestamp)
         return timestamp
     }
 
     async forceCleanup(gradleUserHome: string, tmpDir: string): Promise<void> {
-        const cleanTimestamp = core.getState('clean-timestamp')
+        const cleanTimestamp = this.env.state.get('clean-timestamp')
         await this.forceCleanupFilesOlderThan({gradleUserHome, tmpDir, cleanTimestamp})
     }
 
@@ -64,8 +65,8 @@ export class CacheCleaner {
         // TODO: This is ineffective: we should be using the newest version of Gradle that ran a build, or a newer version if it's available on PATH.
         const executable = await this.gradleProvisioner.provisionGradleAtLeast('8.12')
 
-        await core.group('Executing Gradle to clean up caches', async () => {
-            core.info(`Cleaning up caches last used before ${cleanTimestamp}`)
+        await this.env.exec.group('Executing Gradle to clean up caches', async () => {
+            this.env.log.info(`Cleaning up caches last used before ${cleanTimestamp}`)
             await this.executeCleanupBuild({gradleUserHome, executable, cleanupProjectDir})
         })
     }
@@ -92,7 +93,7 @@ export class CacheCleaner {
             'noop'
         ]
 
-        await exec.exec(executable, args, {
+        await this.env.exec.run(executable, args, {
             cwd: cleanupProjectDir
         })
     }

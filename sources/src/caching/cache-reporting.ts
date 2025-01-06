@@ -1,4 +1,4 @@
-import * as cache from '@actions/cache'
+import {GradleEnv} from '../env/env'
 
 export const DEFAULT_CACHE_ENABLED_REASON = `[Cache was enabled](https://github.com/gradle/actions/blob/main/docs/setup-gradle.md#caching-build-state-between-jobs). Action attempted to both restore and save the Gradle User Home.`
 
@@ -27,6 +27,12 @@ export const CLEANUP_DISABLED_DUE_TO_CONFIG_CACHE_HIT =
  * This information is used to generate a summary of the cache usage.
  */
 export class CacheListener {
+    private readonly env: GradleEnv
+
+    constructor(env: GradleEnv) {
+        this.env = env
+    }
+
     cacheEntries: CacheEntryListener[] = []
     cacheReadOnly = false
     cacheWriteOnly = false
@@ -39,7 +45,7 @@ export class CacheListener {
     }
 
     get cacheStatus(): string {
-        if (!cache.isFeatureAvailable()) return 'not available'
+        if (!this.env.cache.isAvailable()) return 'not available'
         if (this.cacheDisabled) return 'disabled'
         if (this.cacheWriteOnly) return 'write-only'
         if (this.cacheReadOnly) return 'read-only'
@@ -87,11 +93,11 @@ export class CacheListener {
         return JSON.stringify(this)
     }
 
-    static rehydrate(stringRep: string): CacheListener {
+    static rehydrate(env: GradleEnv, stringRep: string): CacheListener {
         if (stringRep === '') {
-            return new CacheListener()
+            return new CacheListener(env)
         }
-        const rehydrated: CacheListener = Object.assign(new CacheListener(), JSON.parse(stringRep))
+        const rehydrated: CacheListener = Object.assign(new CacheListener(env), JSON.parse(stringRep))
         const entries = rehydrated.cacheEntries
         for (let index = 0; index < entries.length; index++) {
             const rawEntry = entries[index]

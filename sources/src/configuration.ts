@@ -5,10 +5,24 @@ import * as deprecator from './deprecation-collector'
 import {SUMMARY_ENV_VAR} from '@actions/core/lib/summary'
 
 import path from 'path'
+import {GradleEnv} from './env/env'
+import {Dependencies} from './inject'
 
 const ACTION_ID_VAR = 'GRADLE_ACTION_ID'
 
 export const ACTION_METADATA_DIR = '.setup-gradle'
+
+export function setupConfigurations(env: GradleEnv, supplied: Partial<Dependencies>): Partial<Dependencies> {
+    return {
+        ...supplied,
+        ...{
+            cacheConfig: new CacheConfig(),
+            buildScanConfig: new BuildScanConfig(),
+            wrapperValidationConfig: new WrapperValidationConfig(),
+            summaryConfig: new SummaryConfig()
+        }
+    }
+}
 
 export class DependencyGraphConfig {
     getDependencyGraphOption(): DependencyGraphOption {
