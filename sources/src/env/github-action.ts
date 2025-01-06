@@ -1,4 +1,4 @@
-import {GradleContext, GradleEnvImplementation, GradleEnvState, GradleEnv} from './env'
+import {GradleContext, GradleEnvImplementation, GradleEnvStateImplementation, GradleEnv} from './env'
 import * as core from '@actions/core'
 import * as cache from '@actions/cache'
 import * as exec from '@actions/exec'
@@ -10,18 +10,15 @@ import {GradleGlob} from './glob'
 const githubContext: GradleContext = {
     workflowIdentifier: github.context.workflow,
     jobIdentifier: github.context.job,
-    gitRef: github.context.sha
+    gitRef: github.context.sha,
+    workspaceDirectory: process.env.GITHUB_WORKSPACE || ''
 }
 
 class GitHubActionGradleEnv implements GradleEnvImplementation {
-    readonly state: GradleEnvState = {
-        get: (key: string): string => {
-            return core.getState(key)
-        },
-
-        set: (key: string, value: string): void => {
-            core.saveState(key, value)
-        }
+    readonly state: GradleEnvStateImplementation = {
+        get: core.getState,
+        set: core.saveState,
+        getInput: core.getInput
     }
 
     readonly exec = {
@@ -78,4 +75,4 @@ class GitHubActionGradleEnv implements GradleEnvImplementation {
     }
 }
 
-export const gradleEnv: GradleEnv = new GradleEnv(githubContext, new GitHubActionGradleEnv())
+export const githubActionGradleEnv: GradleEnv = new GradleEnv(githubContext, new GitHubActionGradleEnv())

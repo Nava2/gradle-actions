@@ -3,25 +3,25 @@ import * as fs from 'fs'
 import { describe, expect, it } from '@jest/globals'
 
 import { GradleUserHomeCache } from "../../src/caching/gradle-user-home-cache"
-import { CacheConfig } from "../../src/configuration"
 import { CacheKeyGenerator } from '../../src/caching/cache-key'
 import { RemoteCacheAccessor } from '../../src/caching/cache-utils'
-import { gradleEnv } from '../../src/env/github-action'
+import { githubActionGradleEnv } from '../../src/env/github-action'
+import { CacheConfig } from '../../src/env/configuration'
 
 const testTmp = 'test/jest/tmp'
 fs.rmSync(testTmp, {recursive: true, force: true})
 
 describe("--info and --stacktrace", () => {
-    const cacheConfig = new CacheConfig()
-    const cacheAccessor = new RemoteCacheAccessor(gradleEnv)
-    const cacheKeyGenerator = new CacheKeyGenerator(gradleEnv)
+    const cacheConfig = new CacheConfig(githubActionGradleEnv)
+    const cacheAccessor = new RemoteCacheAccessor(githubActionGradleEnv)
+    const cacheKeyGenerator = new CacheKeyGenerator(githubActionGradleEnv)
 
     describe("will be created", () => {
         it("when gradle.properties does not exists", async () => {
             const emptyGradleHome = `${testTmp}/empty-gradle-home`
             fs.mkdirSync(emptyGradleHome, {recursive: true})
 
-            const stateCache = new GradleUserHomeCache(gradleEnv, "ignored", emptyGradleHome, cacheConfig, cacheAccessor, cacheKeyGenerator)
+            const stateCache = new GradleUserHomeCache(githubActionGradleEnv, "ignored", emptyGradleHome, cacheConfig, cacheAccessor, cacheKeyGenerator)
             stateCache.configureInfoLogLevel()
 
             expect(fs.readFileSync(path.resolve(emptyGradleHome, "gradle.properties"), 'utf-8'))
@@ -35,7 +35,7 @@ describe("--info and --stacktrace", () => {
             fs.mkdirSync(existingGradleHome, {recursive: true})
             fs.writeFileSync(path.resolve(existingGradleHome, "gradle.properties"), "org.gradle.logging.level=debug\n")
 
-            const stateCache = new GradleUserHomeCache(gradleEnv, "ignored", existingGradleHome, cacheConfig, cacheAccessor, cacheKeyGenerator)
+            const stateCache = new GradleUserHomeCache(githubActionGradleEnv, "ignored", existingGradleHome, cacheConfig, cacheAccessor, cacheKeyGenerator)
             stateCache.configureInfoLogLevel()
 
             expect(fs.readFileSync(path.resolve(existingGradleHome, "gradle.properties"), 'utf-8'))

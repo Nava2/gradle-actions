@@ -1,15 +1,23 @@
+import {CacheConfig} from '../env/configuration'
 import {GradleEnv} from '../env/env'
-import {Dependencies} from '../inject'
 import {GradleExecutableExecutor} from './gradle'
 import {GradleProvisioner} from './provision'
 
-export function setupExecutables(env: GradleEnv, supplied: Partial<Dependencies>): Partial<Dependencies> {
-    const gradleExecutor = supplied.gradleExecutor ?? new GradleExecutableExecutor()
-    const gradleProvisioner = supplied.gradleProvisioner ?? new GradleProvisioner(env, gradleExecutor)
+export interface GradleExecutionDependencies {
+    readonly gradleProvisioner: GradleProvisioner
+    readonly gradleExecutor: GradleExecutableExecutor
+}
+
+export function setupExecutables(
+    env: GradleEnv,
+    cacheConfig: CacheConfig,
+    supplied?: GradleExecutionDependencies
+): GradleExecutionDependencies {
+    const gradleExecutor = supplied?.gradleExecutor ?? new GradleExecutableExecutor()
 
     return {
         ...supplied,
         gradleExecutor,
-        gradleProvisioner
+        gradleProvisioner: supplied?.gradleProvisioner ?? new GradleProvisioner(env, gradleExecutor, cacheConfig)
     }
 }

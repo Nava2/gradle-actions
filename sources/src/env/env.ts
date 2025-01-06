@@ -4,9 +4,69 @@ import {GradleGlob} from './glob'
 /**
  * Provides read/write access to saving state within the environment.
  */
-export interface GradleEnvState {
+export interface GradleEnvStateImplementation {
     get(key: string): string
     set(key: string, value: string): void
+
+    getInput(key: string, options?: GradleEnvInputOptions): string
+}
+
+export interface GradleEnvInputOptions {
+    /**
+     * True if input is required.
+     */
+    readonly required?: boolean
+}
+
+/**
+ * Provides read/write access to saving state within the environment.
+ */
+export class GradleEnvState {
+    private readonly impl: GradleEnvStateImplementation
+
+    constructor(impl: GradleEnvStateImplementation) {
+        this.impl = impl
+    }
+
+    get(key: string): string {
+        return this.impl.get(key)
+    }
+    set(key: string, value: string): void {
+        this.impl.set(key, value)
+    }
+
+    getInput(key: string, options?: GradleEnvInputOptions): string {
+        return this.impl.getInput(key, options)
+    }
+
+    getOptionalInput(paramName: string): string | undefined {
+        const paramValue = this.getInput(paramName)
+        if (paramValue.length > 0) {
+            return paramValue
+        }
+        return undefined
+    }
+
+    getBooleanInput(paramName: string, paramDefault = false): boolean {
+        const paramValue = this.getInput(paramName)
+        switch (paramValue.toLowerCase().trim()) {
+            case '':
+                return paramDefault
+            case 'false':
+                return false
+            case 'true':
+                return true
+        }
+        throw TypeError(`The value '${paramValue} is not valid for '${paramName}. Valid values are: [true, false]`)
+    }
+
+    getOptionalBooleanInput(paramName: string): boolean | undefined {
+        const paramValue = this.getInput(paramName)
+        if (paramValue === '') {
+            return undefined
+        }
+        return this.getBooleanInput(paramName)
+    }
 }
 
 export interface GradleEnvExecution {
@@ -86,13 +146,18 @@ export interface GradleContext {
      * Current git commit ref.
      */
     readonly gitRef: string
+
+    /**
+     * Workspace directory.
+     */
+    readonly workspaceDirectory: string
 }
 
 export interface GradleEnvImplementation {
     /**
      * Access to saving state within the environment.
      */
-    readonly state: GradleEnvState
+    readonly state: GradleEnvStateImplementation
 
     /**
      * Execution environment access.
@@ -141,7 +206,7 @@ export class GradleEnv {
 
     constructor(context: GradleContext, impl: GradleEnvImplementation) {
         this.impl = impl
-        this.state = impl.state
+        this.state = new GradleEnvState(impl.state)
         this.exec = impl.exec
         this.log = impl.log
         this.context = context

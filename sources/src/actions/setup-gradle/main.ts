@@ -1,10 +1,11 @@
 import * as dependencyGraph from '../../dependency-graph'
-import {DependencyGraphConfig, GradleExecutionConfig, getActionId, setActionId} from '../../configuration'
+import {DependencyGraphConfig, getActionId, setActionId} from '../../env/configuration'
 import {failOnUseOfRemovedFeature, saveDeprecationState} from '../../deprecation-collector'
 import {handleMainActionError} from '../../errors'
 import {SetupGradleAction} from '../../setup-gradle'
-import {gradleEnv} from '../../env/github-action'
 import {setupDependencies} from '../../inject'
+import {githubActionGradleEnv} from '../../env/github-action'
+
 /**
  * The main entry point for the action, called by Github Actions for the step.
  */
@@ -18,19 +19,21 @@ export async function run(): Promise<void> {
 
         setActionId('gradle/actions/setup-gradle')
 
-        const dependencies = setupDependencies(gradleEnv)
-        const {gradleProvisioner} = dependencies
+        const dependencies = setupDependencies(githubActionGradleEnv)
+        const {
+            execution: {gradleProvisioner},
+            config: {gradleExecutionConfig}
+        } = dependencies
 
         // Configure Gradle environment (Gradle User Home)
         await SetupGradleAction.create(dependencies).setup()
 
         // Configure the dependency graph submission
-        await dependencyGraph.setup(new DependencyGraphConfig())
+        await dependencyGraph.setup(new DependencyGraphConfig(githubActionGradleEnv))
 
-        const config = new GradleExecutionConfig()
-        config.verifyNoArguments()
+        gradleExecutionConfig.verifyNoArguments()
 
-        await gradleProvisioner.provisionGradle(config.getGradleVersion())
+        await gradleProvisioner.provisionGradle(gradleExecutionConfig.getGradleVersion())
 
         saveDeprecationState()
     } catch (error) {

@@ -1,6 +1,6 @@
 import fs from 'fs'
 import path from 'path'
-import {ACTION_METADATA_DIR} from '../configuration'
+import {ACTION_METADATA_DIR} from '../env/configuration'
 
 export class ChecksumCache {
     private readonly cacheFile: string

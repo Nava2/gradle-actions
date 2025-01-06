@@ -9,11 +9,11 @@ import * as buildScan from './develocity/build-scan'
 import {loadBuildResults, markBuildResultsProcessed} from './build-results'
 import {CacheListener, generateCachingReport} from './caching/cache-reporting'
 import {DaemonController} from './daemon-controller'
-import {BuildScanConfig, SummaryConfig, WrapperValidationConfig, getWorkspaceDirectory} from './configuration'
+import {BuildScanConfig, SummaryConfig, WrapperValidationConfig} from './env/configuration'
 import * as wrapperValidator from './wrapper-validation/wrapper-validator'
 import {CacheContentFactory} from './caching/caches'
 import {GradleEnv} from './env/env'
-import {Dependencies} from './inject'
+import {Dependencies} from './inject-dependencies'
 
 const GRADLE_SETUP_VAR = 'GRADLE_BUILD_ACTION_SETUP_COMPLETED'
 const USER_HOME = 'USER_HOME'
@@ -48,10 +48,10 @@ export class SetupGradleAction {
     static create(dependencies: Dependencies): SetupGradleAction {
         return new SetupGradleAction(
             dependencies.env,
-            dependencies.buildScanConfig,
-            dependencies.wrapperValidationConfig,
-            dependencies.summaryConfig,
-            dependencies.cacheContentFactory
+            dependencies.config.buildScanConfig,
+            dependencies.config.wrapperValidationConfig,
+            dependencies.config.summaryConfig,
+            dependencies.cache.cacheContentFactory
         )
     }
 
@@ -83,7 +83,11 @@ export class SetupGradleAction {
 
         core.saveState(CACHE_LISTENER, cacheListener.stringify())
 
-        await wrapperValidator.validateWrappers(this.wrapperValidationConfig, getWorkspaceDirectory(), gradleUserHome)
+        await wrapperValidator.validateWrappers(
+            this.wrapperValidationConfig,
+            this.env.context.workspaceDirectory,
+            gradleUserHome
+        )
 
         await buildScan.setup(this.buildScanConfig)
 
@@ -113,7 +117,7 @@ export class SetupGradleAction {
         await cacheContent.save(cacheListener, daemonController, buildResults)
 
         const cachingReport = generateCachingReport(cacheListener)
-        await jobSummary.generateJobSummary(buildResults, cachingReport, this.summaryConfig)
+        await jobSummary.generateJobSummary(this.env, buildResults, cachingReport, this.summaryConfig)
 
         markBuildResultsProcessed()
 
@@ -125,7 +129,7 @@ export class SetupGradleAction {
     private async determineGradleUserHome(): Promise<string> {
         const customGradleUserHome = process.env['GRADLE_USER_HOME']
         if (customGradleUserHome) {
-            const rootDir = getWorkspaceDirectory()
+            const rootDir = this.env.context.workspaceDirectory
             return path.resolve(rootDir, customGradleUserHome)
         }
 

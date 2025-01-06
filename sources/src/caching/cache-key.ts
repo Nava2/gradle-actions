@@ -1,4 +1,4 @@
-import {CacheConfig, getJobMatrix} from '../configuration'
+import {CacheConfig, getJobMatrix} from '../env/configuration'
 import {hashStrings} from './cache-utils'
 import {GradleEnv} from '../env/env'
 
@@ -99,7 +99,7 @@ export class CacheKeyGenerator {
         // By default, we hash the workflow name and the full `matrix` data for the run, to uniquely identify this job invocation
         // The only way we can obtain the `matrix` data is via the `workflow-job-context` parameter in action.yml.
         const workflowName = this.env.context.workflowIdentifier
-        const workflowJobContext = getJobMatrix()
+        const workflowJobContext = getJobMatrix(this.env)
         return hashStrings([workflowName, workflowJobContext])
     }
 

@@ -1,4 +1,4 @@
-import {gradleEnv} from '../../env/github-action'
+import {githubActionGradleEnv} from '../../env/github-action'
 import {handlePostActionError} from '../../errors'
 import {setupDependencies} from '../../inject'
 import {SetupGradleAction} from '../../setup-gradle'
@@ -13,7 +13,7 @@ process.on('uncaughtException', e => handlePostActionError(e))
  */
 export async function run(): Promise<void> {
     try {
-        const dependencies = setupDependencies(gradleEnv)
+        const dependencies = setupDependencies(githubActionGradleEnv)
 
         // Configure Gradle environment (Gradle User Home)
         await SetupGradleAction.create(dependencies).complete()

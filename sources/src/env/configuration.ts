@@ -1,32 +1,26 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import * as cache from '@actions/cache'
-import * as deprecator from './deprecation-collector'
+import * as deprecator from '../deprecation-collector'
 import {SUMMARY_ENV_VAR} from '@actions/core/lib/summary'
 
 import path from 'path'
-import {GradleEnv} from './env/env'
-import {Dependencies} from './inject'
+import {GradleEnv, GradleEnvState} from './env'
 
 const ACTION_ID_VAR = 'GRADLE_ACTION_ID'
 
 export const ACTION_METADATA_DIR = '.setup-gradle'
 
-export function setupConfigurations(env: GradleEnv, supplied: Partial<Dependencies>): Partial<Dependencies> {
-    return {
-        ...supplied,
-        ...{
-            cacheConfig: new CacheConfig(),
-            buildScanConfig: new BuildScanConfig(),
-            wrapperValidationConfig: new WrapperValidationConfig(),
-            summaryConfig: new SummaryConfig()
-        }
-    }
-}
-
 export class DependencyGraphConfig {
+    private readonly env: GradleEnv
+    private readonly state: GradleEnvState
+
+    constructor(env: GradleEnv) {
+        this.env = env
+        this.state = env.state
+    }
+
     getDependencyGraphOption(): DependencyGraphOption {
-        const val = core.getInput('dependency-graph')
+        const val = this.state.getInput('dependency-graph')
         switch (val.toLowerCase().trim()) {
             case 'disabled':
                 return DependencyGraphOption.Disabled
@@ -45,22 +39,26 @@ export class DependencyGraphConfig {
     }
 
     getDependencyGraphContinueOnFailure(): boolean {
-        return getBooleanInput('dependency-graph-continue-on-failure', true)
+        return this.state.getBooleanInput('dependency-graph-continue-on-failure', true)
     }
 
     getArtifactRetentionDays(): number {
-        const val = core.getInput('artifact-retention-days')
+        const val = this.state.getInput('artifact-retention-days')
         return parseNumericInput('artifact-retention-days', val, 0)
         // Zero indicates that the default repository settings should be used
     }
 
     getJobCorrelator(): string {
-        return DependencyGraphConfig.constructJobCorrelator(github.context.workflow, github.context.job, getJobMatrix())
+        return DependencyGraphConfig.constructJobCorrelator(
+            github.context.workflow,
+            github.context.job,
+            getJobMatrix(this.env)
+        )
     }
 
     getReportDirectory(): string {
-        const param = core.getInput('dependency-graph-report-dir')
-        return path.resolve(getWorkspaceDirectory(), param)
+        const param = this.state.getInput('dependency-graph-report-dir')
+        return path.resolve(this.env.context.workspaceDirectory, param)
     }
 
     getDownloadArtifactName(): string | undefined {
@@ -68,19 +66,19 @@ export class DependencyGraphConfig {
     }
 
     getExcludeProjects(): string | undefined {
-        return getOptionalInput('dependency-graph-exclude-projects')
+        return this.state.getOptionalInput('dependency-graph-exclude-projects')
     }
 
     getIncludeProjects(): string | undefined {
-        return getOptionalInput('dependency-graph-include-projects')
+        return this.state.getOptionalInput('dependency-graph-include-projects')
     }
 
     getExcludeConfigurations(): string | undefined {
-        return getOptionalInput('dependency-graph-exclude-configurations')
+        return this.state.getOptionalInput('dependency-graph-exclude-configurations')
     }
 
     getIncludeConfigurations(): string | undefined {
-        return getOptionalInput('dependency-graph-include-configurations')
+        return this.state.getOptionalInput('dependency-graph-include-configurations')
     }
 
     static constructJobCorrelator(workflow: string, jobId: string, matrixJson: string): string {
@@ -115,28 +113,36 @@ export enum DependencyGraphOption {
 }
 
 export class CacheConfig {
+    private readonly env: GradleEnv
+    private readonly state: GradleEnvState
+
+    constructor(env: GradleEnv) {
+        this.env = env
+        this.state = env.state
+    }
+
     isCacheDisabled(): boolean {
-        if (!cache.isFeatureAvailable()) {
+        if (!this.env.cache.isAvailable()) {
             return true
         }
 
-        return getBooleanInput('cache-disabled')
+        return this.state.getBooleanInput('cache-disabled')
     }
 
     isCacheReadOnly(): boolean {
-        return !this.isCacheWriteOnly() && getBooleanInput('cache-read-only')
+        return !this.isCacheWriteOnly() && this.state.getBooleanInput('cache-read-only')
     }
 
     isCacheWriteOnly(): boolean {
-        return getBooleanInput('cache-write-only')
+        return this.state.getBooleanInput('cache-write-only')
     }
 
     isCacheOverwriteExisting(): boolean {
-        return getBooleanInput('cache-overwrite-existing')
+        return this.state.getBooleanInput('cache-overwrite-existing')
     }
 
     isCacheStrictMatch(): boolean {
-        return getBooleanInput('gradle-home-cache-strict-match')
+        return this.state.getBooleanInput('gradle-home-cache-strict-match')
     }
 
     isCacheCleanupEnabled(): boolean {
@@ -159,7 +165,7 @@ export class CacheConfig {
     }
 
     private getCacheCleanupOption(): CacheCleanupOption {
-        const legacyVal = getOptionalBooleanInput('gradle-home-cache-cleanup')
+        const legacyVal = this.state.getOptionalBooleanInput('gradle-home-cache-cleanup')
         if (legacyVal !== undefined) {
             deprecator.recordDeprecation(
                 'The `gradle-home-cache-cleanup` input parameter has been replaced by `cache-cleanup`'
@@ -167,7 +173,7 @@ export class CacheConfig {
             return legacyVal ? CacheCleanupOption.Always : CacheCleanupOption.Never
         }
 
-        const val = core.getInput('cache-cleanup')
+        const val = this.state.getInput('cache-cleanup')
         switch (val.toLowerCase().trim()) {
             case 'always':
                 return CacheCleanupOption.Always
@@ -182,7 +188,7 @@ export class CacheConfig {
     }
 
     getCacheEncryptionKey(): string {
-        return core.getInput('cache-encryption-key')
+        return this.state.getInput('cache-encryption-key')
     }
 
     getCacheIncludes(): string[] {
@@ -201,6 +207,14 @@ export enum CacheCleanupOption {
 }
 
 export class SummaryConfig {
+    private readonly env: GradleEnv
+    private readonly state: GradleEnvState
+
+    constructor(env: GradleEnv) {
+        this.env = env
+        this.state = env.state
+    }
+
     shouldGenerateJobSummary(hasFailure: boolean): boolean {
         // Check if Job Summary is supported on this platform
         if (!process.env[SUMMARY_ENV_VAR]) {
@@ -234,7 +248,7 @@ export class SummaryConfig {
     }
 
     private parseJobSummaryOption(paramName: string): JobSummaryOption {
-        const val = core.getInput(paramName)
+        const val = this.state.getInput(paramName)
         switch (val.toLowerCase().trim()) {
             case 'never':
                 return JobSummaryOption.Never
@@ -256,24 +270,32 @@ export enum JobSummaryOption {
 }
 
 export class BuildScanConfig {
+    private readonly env: GradleEnv
+    private readonly state: GradleEnvState
+
+    constructor(env: GradleEnv) {
+        this.env = env
+        this.state = env.state
+    }
+
     static DevelocityAccessKeyEnvVar = 'DEVELOCITY_ACCESS_KEY'
     static GradleEnterpriseAccessKeyEnvVar = 'GRADLE_ENTERPRISE_ACCESS_KEY'
 
     getBuildScanPublishEnabled(): boolean {
-        return getBooleanInput('build-scan-publish') && this.verifyTermsOfUseAgreement()
+        return this.state.getBooleanInput('build-scan-publish') && this.verifyTermsOfUseAgreement()
     }
 
     getBuildScanTermsOfUseUrl(): string {
-        return core.getInput('build-scan-terms-of-use-url')
+        return this.state.getInput('build-scan-terms-of-use-url')
     }
 
     getBuildScanTermsOfUseAgree(): string {
-        return core.getInput('build-scan-terms-of-use-agree')
+        return this.state.getInput('build-scan-terms-of-use-agree')
     }
 
     getDevelocityAccessKey(): string {
         return (
-            core.getInput('develocity-access-key') ||
+            this.state.getInput('develocity-access-key') ||
             process.env[BuildScanConfig.DevelocityAccessKeyEnvVar] ||
             process.env[BuildScanConfig.GradleEnterpriseAccessKeyEnvVar] ||
             ''
@@ -281,47 +303,47 @@ export class BuildScanConfig {
     }
 
     getDevelocityTokenExpiry(): string {
-        return core.getInput('develocity-token-expiry')
+        return this.state.getInput('develocity-token-expiry')
     }
 
     getDevelocityInjectionEnabled(): boolean | undefined {
-        return getOptionalBooleanInput('develocity-injection-enabled')
+        return this.state.getOptionalBooleanInput('develocity-injection-enabled')
     }
 
     getDevelocityUrl(): string {
-        return core.getInput('develocity-url')
+        return this.state.getInput('develocity-url')
     }
 
     getDevelocityAllowUntrustedServer(): boolean | undefined {
-        return getOptionalBooleanInput('develocity-allow-untrusted-server')
+        return this.state.getOptionalBooleanInput('develocity-allow-untrusted-server')
     }
 
     getDevelocityCaptureFileFingerprints(): boolean | undefined {
-        return getOptionalBooleanInput('develocity-capture-file-fingerprints')
+        return this.state.getOptionalBooleanInput('develocity-capture-file-fingerprints')
     }
 
     getDevelocityEnforceUrl(): boolean | undefined {
-        return getOptionalBooleanInput('develocity-enforce-url')
+        return this.state.getOptionalBooleanInput('develocity-enforce-url')
     }
 
     getDevelocityPluginVersion(): string {
-        return core.getInput('develocity-plugin-version')
+        return this.state.getInput('develocity-plugin-version')
     }
 
     getDevelocityCcudPluginVersion(): string {
-        return core.getInput('develocity-ccud-plugin-version')
+        return this.state.getInput('develocity-ccud-plugin-version')
     }
 
     getGradlePluginRepositoryUrl(): string {
-        return core.getInput('gradle-plugin-repository-url')
+        return this.state.getInput('gradle-plugin-repository-url')
     }
 
     getGradlePluginRepositoryUsername(): string {
-        return core.getInput('gradle-plugin-repository-username')
+        return this.state.getInput('gradle-plugin-repository-username')
     }
 
     getGradlePluginRepositoryPassword(): string {
-        return core.getInput('gradle-plugin-repository-password')
+        return this.state.getInput('gradle-plugin-repository-password')
     }
 
     private verifyTermsOfUseAgreement(): boolean {
@@ -340,13 +362,21 @@ export class BuildScanConfig {
 }
 
 export class GradleExecutionConfig {
+    private readonly env: GradleEnv
+    private readonly state: GradleEnvState
+
+    constructor(env: GradleEnv) {
+        this.env = env
+        this.state = env.state
+    }
+
     getGradleVersion(): string {
-        return core.getInput('gradle-version')
+        return this.state.getInput('gradle-version')
     }
 
     getBuildRootDirectory(): string {
-        const baseDirectory = getWorkspaceDirectory()
-        const buildRootDirectoryInput = core.getInput('build-root-directory')
+        const baseDirectory = this.env.context.workspaceDirectory
+        const buildRootDirectoryInput = this.state.getInput('build-root-directory')
         const resolvedBuildRootDirectory =
             buildRootDirectoryInput === ''
                 ? path.resolve(baseDirectory)
@@ -355,15 +385,18 @@ export class GradleExecutionConfig {
     }
 
     getDependencyResolutionTask(): string {
-        return core.getInput('dependency-resolution-task') || ':ForceDependencyResolutionPlugin_resolveAllDependencies'
+        return (
+            this.state.getInput('dependency-resolution-task') ||
+            ':ForceDependencyResolutionPlugin_resolveAllDependencies'
+        )
     }
 
     getAdditionalArguments(): string {
-        return core.getInput('additional-arguments')
+        return this.state.getInput('additional-arguments')
     }
 
     verifyNoArguments(): void {
-        const input = core.getInput('arguments')
+        const input = this.state.getInput('arguments')
         if (input.length !== 0) {
             deprecator.failOnUseOfRemovedFeature(
                 `The 'arguments' parameter is no longer supported for ${getActionId()}`,
@@ -374,22 +407,30 @@ export class GradleExecutionConfig {
 }
 
 export class WrapperValidationConfig {
+    private readonly env: GradleEnv
+    private readonly state: GradleEnvState
+
+    constructor(env: GradleEnv) {
+        this.env = env
+        this.state = env.state
+    }
+
     doValidateWrappers(): boolean {
-        return getBooleanInput('validate-wrappers')
+        return this.state.getBooleanInput('validate-wrappers')
     }
 
     allowSnapshotWrappers(): boolean {
-        return getBooleanInput('allow-snapshot-wrappers')
+        return this.state.getBooleanInput('allow-snapshot-wrappers')
     }
 }
 
 // Internal parameters
-export function getJobMatrix(): string {
-    return core.getInput('workflow-job-context')
+export function getJobMatrix(env: GradleEnv): string {
+    return env.state.getInput('workflow-job-context')
 }
 
-export function getGithubToken(): string {
-    return core.getInput('github-token', {required: true})
+export function getGithubToken(env: GradleEnv): string {
+    return env.state.getInput('github-token', {required: true})
 }
 
 export function getWorkspaceDirectory(): string {
@@ -415,31 +456,23 @@ export function parseNumericInput(paramName: string, paramValue: string, paramDe
     return numericValue
 }
 
-function getOptionalInput(paramName: string): string | undefined {
-    const paramValue = core.getInput(paramName)
-    if (paramValue.length > 0) {
-        return paramValue
-    }
-    return undefined
+export interface ConfigurationDependencies {
+    readonly cacheConfig: CacheConfig
+    readonly buildScanConfig: BuildScanConfig
+    readonly wrapperValidationConfig: WrapperValidationConfig
+    readonly summaryConfig: SummaryConfig
+    readonly dependencyGraphConfig: DependencyGraphConfig
+    readonly gradleExecutionConfig: GradleExecutionConfig
 }
 
-function getBooleanInput(paramName: string, paramDefault = false): boolean {
-    const paramValue = core.getInput(paramName)
-    switch (paramValue.toLowerCase().trim()) {
-        case '':
-            return paramDefault
-        case 'false':
-            return false
-        case 'true':
-            return true
+export function setupConfigurations(env: GradleEnv, supplied?: ConfigurationDependencies): ConfigurationDependencies {
+    return {
+        ...supplied,
+        cacheConfig: new CacheConfig(env),
+        buildScanConfig: new BuildScanConfig(env),
+        wrapperValidationConfig: new WrapperValidationConfig(env),
+        summaryConfig: new SummaryConfig(env),
+        dependencyGraphConfig: new DependencyGraphConfig(env),
+        gradleExecutionConfig: new GradleExecutionConfig(env)
     }
-    throw TypeError(`The value '${paramValue} is not valid for '${paramName}. Valid values are: [true, false]`)
-}
-
-function getOptionalBooleanInput(paramName: string): boolean | undefined {
-    const paramValue = core.getInput(paramName)
-    if (paramValue === '') {
-        return undefined
-    }
-    return getBooleanInput(paramName)
 }

@@ -9,7 +9,7 @@ import * as toolCache from '@actions/tool-cache'
 import {GradleExecutableExecutor, versionIsAtLeast} from './gradle'
 import * as gradlew from './gradlew'
 import {handleCacheFailure} from '../caching/cache-utils'
-import {CacheConfig} from '../configuration'
+import {CacheConfig} from '../env/configuration'
 import {GradleEnv} from '../env/env'
 
 const gradleVersionsBaseUrl = 'https://services.gradle.org/versions'
@@ -17,10 +17,12 @@ const gradleVersionsBaseUrl = 'https://services.gradle.org/versions'
 export class GradleProvisioner {
     private readonly env: GradleEnv
     private readonly gradleExecutor: GradleExecutableExecutor
+    private readonly cacheConfig: CacheConfig
 
-    constructor(env: GradleEnv, gradleExecutor: GradleExecutableExecutor) {
+    constructor(env: GradleEnv, gradleExecutor: GradleExecutableExecutor, cacheConfig: CacheConfig) {
         this.env = env
         this.gradleExecutor = gradleExecutor
+        this.cacheConfig = cacheConfig
     }
 
     /**
@@ -163,8 +165,7 @@ export class GradleProvisioner {
         const downloadPath = path.join(getProvisionDir(), `downloads/gradle-${versionInfo.version}-bin.zip`)
 
         // TODO: Convert this to a class and inject config
-        const cacheConfig = new CacheConfig()
-        if (cacheConfig.isCacheDisabled()) {
+        if (this.cacheConfig.isCacheDisabled()) {
             await this.downloadGradleDistribution(versionInfo, downloadPath)
             return downloadPath
         }
@@ -183,7 +184,7 @@ export class GradleProvisioner {
         core.info(`Gradle distribution ${versionInfo.version} not found in cache. Will download.`)
         await this.downloadGradleDistribution(versionInfo, downloadPath)
 
-        if (!cacheConfig.isCacheReadOnly()) {
+        if (!this.cacheConfig.isCacheReadOnly()) {
             try {
                 await cache.saveCache([downloadPath], cacheKey)
             } catch (error) {

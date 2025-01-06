@@ -6,8 +6,8 @@ import {CacheEntryListener, CacheListener} from './cache-reporting'
 import {hashFileNames, RemoteCacheAccessor, tryDelete} from './cache-utils'
 
 import {BuildResult, loadBuildResults} from '../build-results'
-import {CacheConfig, ACTION_METADATA_DIR} from '../configuration'
 import {CacheKeyGenerator} from './cache-key'
+import {CacheConfig, ACTION_METADATA_DIR} from '../env/configuration'
 import {versionIsAtLeast} from '../execution/gradle'
 import {GradleEnv} from '../env/env'
 

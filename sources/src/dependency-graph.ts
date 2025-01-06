@@ -10,7 +10,9 @@ import * as path from 'path'
 import fs from 'fs'
 
 import {JobFailure} from './errors'
-import {DependencyGraphConfig, DependencyGraphOption, getGithubToken, getWorkspaceDirectory} from './configuration'
+import {DependencyGraphConfig, DependencyGraphOption, getGithubToken} from './env/configuration'
+import {githubActionGradleEnv} from './env/github-action'
+import {GradleEnv} from './env/env'
 
 const DEPENDENCY_GRAPH_PREFIX = 'dependency-graph_'
 
@@ -23,7 +25,7 @@ export async function setup(config: DependencyGraphConfig): Promise<void> {
     // Download and submit early, for compatability with dependency review.
     if (option === DependencyGraphOption.DownloadAndSubmit) {
         maybeExportVariable('DEPENDENCY_GRAPH_REPORT_DIR', config.getReportDirectory())
-        await downloadAndSubmitDependencyGraphs(config)
+        await downloadAndSubmitDependencyGraphs(githubActionGradleEnv, config)
         return
     }
 
@@ -34,7 +36,7 @@ export async function setup(config: DependencyGraphConfig): Promise<void> {
     maybeExportVariable('GITHUB_DEPENDENCY_GRAPH_JOB_ID', github.context.runId.toString())
     maybeExportVariable('GITHUB_DEPENDENCY_GRAPH_REF', github.context.ref)
     maybeExportVariable('GITHUB_DEPENDENCY_GRAPH_SHA', getShaFromContext())
-    maybeExportVariable('GITHUB_DEPENDENCY_GRAPH_WORKSPACE', getWorkspaceDirectory())
+    maybeExportVariable('GITHUB_DEPENDENCY_GRAPH_WORKSPACE', githubActionGradleEnv.context.workspaceDirectory)
     maybeExportVariable('DEPENDENCY_GRAPH_REPORT_DIR', config.getReportDirectory())
 
     maybeExportVariable('DEPENDENCY_GRAPH_EXCLUDE_PROJECTS', config.getExcludeProjects())
@@ -70,14 +72,14 @@ export async function complete(config: DependencyGraphConfig): Promise<void> {
     }
 }
 
-async function downloadAndSubmitDependencyGraphs(config: DependencyGraphConfig): Promise<void> {
+async function downloadAndSubmitDependencyGraphs(env: GradleEnv, config: DependencyGraphConfig): Promise<void> {
     if (isRunningInActEnvironment()) {
         core.info('Dependency graph not supported in the ACT environment.')
         return
     }
 
     try {
-        await submitDependencyGraphs(await downloadDependencyGraphs(config))
+        await submitDependencyGraphs(env, await downloadDependencyGraphs(config))
     } catch (e) {
         warnOrFail(config, DependencyGraphOption.DownloadAndSubmit, e)
     }
@@ -91,7 +93,7 @@ async function findAndSubmitDependencyGraphs(config: DependencyGraphConfig): Pro
 
     const dependencyGraphFiles = await findDependencyGraphFiles()
     try {
-        await submitDependencyGraphs(dependencyGraphFiles)
+        await submitDependencyGraphs(githubActionGradleEnv, dependencyGraphFiles)
     } catch (e) {
         try {
             await uploadDependencyGraphs(dependencyGraphFiles, config)
@@ -114,7 +116,7 @@ async function findAndUploadDependencyGraphs(config: DependencyGraphConfig): Pro
 async function downloadDependencyGraphs(config: DependencyGraphConfig): Promise<string[]> {
     const findBy = github.context.payload.workflow_run
         ? {
-              token: getGithubToken(),
+              token: getGithubToken(githubActionGradleEnv),
               workflowRunId: github.context.payload.workflow_run.id,
               repositoryName: github.context.repo.repo,
               repositoryOwner: github.context.repo.owner
@@ -161,11 +163,11 @@ async function uploadDependencyGraphs(dependencyGraphFiles: string[], config: De
         return
     }
 
-    const workspaceDirectory = getWorkspaceDirectory()
+    const workspaceDirectory = githubActionGradleEnv.context.workspaceDirectory
 
     const artifactClient = new DefaultArtifactClient()
     for (const dependencyGraphFile of dependencyGraphFiles) {
-        const relativePath = getRelativePathFromWorkspace(dependencyGraphFile)
+        const relativePath = getRelativePathFromWorkspace(githubActionGradleEnv, dependencyGraphFile)
         core.info(`Uploading dependency graph file: ${relativePath}`)
         const artifactName = `${DEPENDENCY_GRAPH_PREFIX}${path.basename(dependencyGraphFile)}`
         await artifactClient.uploadArtifact(artifactName, [dependencyGraphFile], workspaceDirectory, {
@@ -174,7 +176,7 @@ async function uploadDependencyGraphs(dependencyGraphFiles: string[], config: De
     }
 }
 
-async function submitDependencyGraphs(dependencyGraphFiles: string[]): Promise<void> {
+async function submitDependencyGraphs(env: GradleEnv, dependencyGraphFiles: string[]): Promise<void> {
     if (dependencyGraphFiles.length === 0) {
         core.info('No dependency graph files found to submit.')
         return
@@ -182,18 +184,18 @@ async function submitDependencyGraphs(dependencyGraphFiles: string[]): Promise<v
 
     for (const dependencyGraphFile of dependencyGraphFiles) {
         try {
-            await submitDependencyGraphFile(dependencyGraphFile)
+            await submitDependencyGraphFile(env, dependencyGraphFile)
         } catch (error) {
             if (error instanceof RequestError) {
-                error.message = translateErrorMessage(dependencyGraphFile, error)
+                error.message = translateErrorMessage(env, dependencyGraphFile, error)
             }
             throw error
         }
     }
 }
 
-function translateErrorMessage(jsonFile: string, error: RequestError): string {
-    const relativeJsonFile = getRelativePathFromWorkspace(jsonFile)
+function translateErrorMessage(env: GradleEnv, jsonFile: string, error: RequestError): string {
+    const relativeJsonFile = getRelativePathFromWorkspace(env, jsonFile)
     const mainWarning = `Dependency submission failed for ${relativeJsonFile}.\n${error.message}`
     if (error.message === 'Resource not accessible by integration') {
         return `${mainWarning}
@@ -204,8 +206,8 @@ Note that this permission is never available for a 'pull_request' trigger from a
     return mainWarning
 }
 
-async function submitDependencyGraphFile(jsonFile: string): Promise<void> {
-    const octokit = getOctokit()
+async function submitDependencyGraphFile(env: GradleEnv, jsonFile: string): Promise<void> {
+    const octokit = getOctokit(env)
     const jsonContent = fs.readFileSync(jsonFile, 'utf8')
 
     const jsonObject = JSON.parse(jsonContent)
@@ -213,7 +215,7 @@ async function submitDependencyGraphFile(jsonFile: string): Promise<void> {
     jsonObject.repo = github.context.repo.repo
     const response = await octokit.request('POST /repos/{owner}/{repo}/dependency-graph/snapshots', jsonObject)
 
-    const relativeJsonFile = getRelativePathFromWorkspace(jsonFile)
+    const relativeJsonFile = getRelativePathFromWorkspace(env, jsonFile)
     core.notice(`Submitted ${relativeJsonFile}: ${response.data.message}`)
 }
 function getReportDirectory(): string {
@@ -238,12 +240,12 @@ function warnOrFail(config: DependencyGraphConfig, option: String, error: unknow
     core.warning(`Failed to ${option} dependency graph. Will continue.\n${String(error)}`)
 }
 
-function getOctokit(): InstanceType<typeof GitHub> {
-    return github.getOctokit(getGithubToken())
+function getOctokit(env: GradleEnv): InstanceType<typeof GitHub> {
+    return github.getOctokit(getGithubToken(env))
 }
 
-function getRelativePathFromWorkspace(file: string): string {
-    const workspaceDirectory = getWorkspaceDirectory()
+function getRelativePathFromWorkspace(env: GradleEnv, file: string): string {
+    const workspaceDirectory = env.context.workspaceDirectory
     return path.relative(workspaceDirectory, file)
 }
 

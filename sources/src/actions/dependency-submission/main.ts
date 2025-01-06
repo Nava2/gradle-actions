@@ -3,11 +3,11 @@ import * as gradle from '../../execution/gradle'
 import * as dependencyGraph from '../../dependency-graph'
 
 import {parseArgsStringToArgv} from 'string-argv'
-import {DependencyGraphConfig, DependencyGraphOption, GradleExecutionConfig, setActionId} from '../../configuration'
+import {DependencyGraphOption, setActionId} from '../../env/configuration'
 import {saveDeprecationState} from '../../deprecation-collector'
 import {handleMainActionError} from '../../errors'
 import {SetupGradleAction} from '../../setup-gradle'
-import {gradleEnv} from '../../env/github-action'
+import {githubActionGradleEnv} from '../../env/github-action'
 import {setupDependencies} from '../../inject'
 
 /**
@@ -17,8 +17,11 @@ export async function run(): Promise<void> {
     try {
         setActionId('gradle/actions/dependency-submission')
 
-        const dependencies = setupDependencies(gradleEnv)
-        const {gradleExecutor, gradleProvisioner} = dependencies
+        const dependencies = setupDependencies(githubActionGradleEnv)
+        const {
+            execution: {gradleExecutor, gradleProvisioner},
+            config: {gradleExecutionConfig: executionConfig, dependencyGraphConfig}
+        } = dependencies
 
         // Configure Gradle environment (Gradle User Home)
         await SetupGradleAction.create(dependencies).setup()
@@ -27,7 +30,6 @@ export async function run(): Promise<void> {
         const originallyEnabled = process.env['GITHUB_DEPENDENCY_GRAPH_ENABLED']
 
         // Configure the dependency graph submission
-        const dependencyGraphConfig = new DependencyGraphConfig()
         await dependencyGraph.setup(dependencyGraphConfig)
 
         if (dependencyGraphConfig.getDependencyGraphOption() === DependencyGraphOption.DownloadAndSubmit) {
@@ -36,7 +38,6 @@ export async function run(): Promise<void> {
         }
 
         // Only execute if arguments have been provided
-        const executionConfig = new GradleExecutionConfig()
         const taskList = executionConfig.getDependencyResolutionTask()
         const additionalArgs = executionConfig.getAdditionalArguments()
         const executionArgs = `
@@ -47,6 +48,14 @@ export async function run(): Promise<void> {
               ${additionalArgs}
         `
         const args: string[] = parseArgsStringToArgv(executionArgs)
+
+        await gradle.provisionAndMaybeExecute({
+            gradleExecutor,
+            gradleProvisioner,
+            gradleVersion: executionConfig.getGradleVersion(),
+            buildRootDirectory: executionConfig.getBuildRootDirectory(),
+            args
+        })
 
         await gradle.provisionAndMaybeExecute({
             gradleProvisioner,

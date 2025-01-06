@@ -7,7 +7,7 @@ import {
 import {GradleUserHomeCache} from './gradle-user-home-cache'
 import {CacheCleaner} from './cache-cleaner'
 import {DaemonController} from '../daemon-controller'
-import {CacheConfig} from '../configuration'
+import {CacheConfig} from '../env/configuration'
 import {BuildResults} from '../build-results'
 import {CacheKeyGenerator} from './cache-key'
 import {RemoteCacheAccessor} from './cache-utils'
@@ -25,13 +25,19 @@ export class CacheContentFactory {
     private readonly cacheKeyGenerator: CacheKeyGenerator
     private readonly cacheCleaner: CacheCleaner
 
-    constructor(
-        env: GradleEnv,
-        cacheConfig: CacheConfig,
-        cacheAccessor: RemoteCacheAccessor,
-        cacheKeyGenerator: CacheKeyGenerator,
+    constructor({
+        env,
+        cacheConfig,
+        cacheAccessor,
+        cacheKeyGenerator,
+        cacheCleaner
+    }: {
+        env: GradleEnv
+        cacheConfig: CacheConfig
+        cacheAccessor: RemoteCacheAccessor
+        cacheKeyGenerator: CacheKeyGenerator
         cacheCleaner: CacheCleaner
-    ) {
+    }) {
         this.env = env
         this.cacheConfig = cacheConfig
         this.cacheAccessor = cacheAccessor

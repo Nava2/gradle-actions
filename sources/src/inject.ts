@@ -1,52 +1,24 @@
-import {CacheCleaner} from './caching/cache-cleaner'
-import {CacheKeyGenerator} from './caching/cache-key'
-import {RemoteCacheAccessor} from './caching/cache-utils'
-import {CacheContentFactory} from './caching/caches'
 import {setupCaching} from './caching/inject'
-import {
-    CacheConfig,
-    BuildScanConfig,
-    WrapperValidationConfig,
-    SummaryConfig,
-    setupConfigurations
-} from './configuration'
+import {Dependencies} from './inject-dependencies'
 import {GradleEnv} from './env/env'
-import {GradleExecutableExecutor} from './execution/gradle'
 import {setupExecutables} from './execution/inject'
-import {GradleProvisioner} from './execution/provision'
-
-/**
- * Defines the tree of dependencies.
- */
-export interface Dependencies {
-    readonly env: GradleEnv
-    readonly cacheConfig: CacheConfig
-    readonly buildScanConfig: BuildScanConfig
-    readonly wrapperValidationConfig: WrapperValidationConfig
-    readonly summaryConfig: SummaryConfig
-    readonly gradleProvisioner: GradleProvisioner
-    readonly gradleExecutor: GradleExecutableExecutor
-    readonly cacheCleaner: CacheCleaner
-    readonly remoteCacheAccessor: RemoteCacheAccessor
-    readonly cacheKeyGenerator: CacheKeyGenerator
-    readonly cacheContentFactory: CacheContentFactory
-}
+import {setupConfigurations} from './env/configuration'
 
 export function setupDependencies(env: GradleEnv, supplied: Partial<Dependencies> = {}): Dependencies {
-    const configurations = setupConfigurations(env, supplied)
+    const config = setupConfigurations(env, supplied.config)
 
-    const {cacheConfig} = configurations
+    const {cacheConfig} = config
 
-    const executables = setupExecutables(env, supplied)
-    const {gradleProvisioner} = executables
+    const execution = setupExecutables(env, cacheConfig, supplied.execution)
+    const {gradleProvisioner} = execution
 
-    const caching = setupCaching(env, cacheConfig!, gradleProvisioner!, supplied)
+    const cache = setupCaching(env, cacheConfig, gradleProvisioner, supplied.cache)
 
     return {
         env,
         ...supplied,
-        ...configurations,
-        ...executables,
-        ...caching
-    } as Dependencies
+        config,
+        execution,
+        cache
+    }
 }

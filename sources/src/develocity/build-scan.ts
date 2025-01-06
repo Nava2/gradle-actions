@@ -1,5 +1,5 @@
 import * as core from '@actions/core'
-import {BuildScanConfig} from '../configuration'
+import {BuildScanConfig} from '../env/configuration'
 import {setupToken} from './short-lived-token'
 
 export async function setup(config: BuildScanConfig): Promise<void> {
