@@ -1,17 +1,9 @@
-import * as setupGradle from '../../setup-gradle'
 import * as provisioner from '../../execution/provision'
 import * as dependencyGraph from '../../dependency-graph'
-import {
-    BuildScanConfig,
-    CacheConfig,
-    DependencyGraphConfig,
-    GradleExecutionConfig,
-    WrapperValidationConfig,
-    getActionId,
-    setActionId
-} from '../../configuration'
+import {DependencyGraphConfig, GradleExecutionConfig, getActionId, setActionId} from '../../configuration'
 import {failOnUseOfRemovedFeature, saveDeprecationState} from '../../deprecation-collector'
 import {handleMainActionError} from '../../errors'
+import {SetupGradleAction} from '../../setup-gradle'
 
 /**
  * The main entry point for the action, called by Github Actions for the step.
@@ -27,7 +19,7 @@ export async function run(): Promise<void> {
         setActionId('gradle/actions/setup-gradle')
 
         // Configure Gradle environment (Gradle User Home)
-        await setupGradle.setup(new CacheConfig(), new BuildScanConfig(), new WrapperValidationConfig())
+        await SetupGradleAction.create().setup()
 
         // Configure the dependency graph submission
         await dependencyGraph.setup(new DependencyGraphConfig())

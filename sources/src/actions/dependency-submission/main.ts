@@ -1,5 +1,4 @@
 import * as core from '@actions/core'
-import * as setupGradle from '../../setup-gradle'
 import * as gradle from '../../execution/gradle'
 import * as dependencyGraph from '../../dependency-graph'
 
@@ -11,10 +10,15 @@ import {
     DependencyGraphOption,
     GradleExecutionConfig,
     setActionId,
+    SummaryConfig,
     WrapperValidationConfig
 } from '../../configuration'
 import {saveDeprecationState} from '../../deprecation-collector'
 import {handleMainActionError} from '../../errors'
+import {SetupGradleAction} from '../../setup-gradle'
+import {CacheContentFactory} from '../../caching/caches'
+import {RemoteCacheAccessor} from '../../caching/cache-utils'
+import {CacheKeyGenerator} from '../../caching/cache-key'
 
 /**
  * The main entry point for the action, called by Github Actions for the step.
@@ -24,16 +28,24 @@ export async function run(): Promise<void> {
         setActionId('gradle/actions/dependency-submission')
 
         // Configure Gradle environment (Gradle User Home)
-        await setupGradle.setup(new CacheConfig(), new BuildScanConfig(), new WrapperValidationConfig())
+        const cacheConfig = new CacheConfig()
+        const setupGradleAction = new SetupGradleAction(
+            cacheConfig,
+            new BuildScanConfig(),
+            new WrapperValidationConfig(),
+            new SummaryConfig(),
+            new CacheContentFactory(cacheConfig, new RemoteCacheAccessor(), new CacheKeyGenerator())
+        )
+        await setupGradleAction.setup()
 
         // Capture the enabled state of dependency-graph
         const originallyEnabled = process.env['GITHUB_DEPENDENCY_GRAPH_ENABLED']
 
         // Configure the dependency graph submission
-        const config = new DependencyGraphConfig()
-        await dependencyGraph.setup(config)
+        const dependencyGraphConfig = new DependencyGraphConfig()
+        await dependencyGraph.setup(dependencyGraphConfig)
 
-        if (config.getDependencyGraphOption() === DependencyGraphOption.DownloadAndSubmit) {
+        if (dependencyGraphConfig.getDependencyGraphOption() === DependencyGraphOption.DownloadAndSubmit) {
             // No execution to perform
             return
         }
@@ -56,7 +68,7 @@ export async function run(): Promise<void> {
             args
         )
 
-        await dependencyGraph.complete(config)
+        await dependencyGraph.complete(dependencyGraphConfig)
 
         // Reset the enabled state of dependency graph
         core.exportVariable('GITHUB_DEPENDENCY_GRAPH_ENABLED', originallyEnabled)

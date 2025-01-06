@@ -1,7 +1,5 @@
-import * as setupGradle from '../../setup-gradle'
-
-import {CacheConfig, SummaryConfig} from '../../configuration'
 import {handlePostActionError} from '../../errors'
+import {SetupGradleAction} from '../../setup-gradle'
 
 // Catch and log any unhandled exceptions.  These exceptions can leak out of the uploadChunk method in
 // @actions/toolkit when a failed upload closes the file descriptor causing any in-process reads to
@@ -13,7 +11,7 @@ process.on('uncaughtException', e => handlePostActionError(e))
  */
 export async function run(): Promise<void> {
     try {
-        await setupGradle.complete(new CacheConfig(), new SummaryConfig())
+        await SetupGradleAction.create().complete()
     } catch (error) {
         handlePostActionError(error)
     }
