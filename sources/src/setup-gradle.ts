@@ -3,7 +3,6 @@ import * as exec from '@actions/exec'
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
-import * as caches from './caching/caches'
 import * as jobSummary from './job-summary'
 import * as buildScan from './develocity/build-scan'
 
@@ -18,6 +17,9 @@ import {
     getWorkspaceDirectory
 } from './configuration'
 import * as wrapperValidator from './wrapper-validation/wrapper-validator'
+import {RemoteCacheAccessor} from './caching/cache-utils'
+import {CacheKeyGenerator} from './caching/cache-key'
+import {CacheContent} from './caching/caches'
 
 const GRADLE_SETUP_VAR = 'GRADLE_BUILD_ACTION_SETUP_COMPLETED'
 const USER_HOME = 'USER_HOME'
@@ -47,7 +49,15 @@ export async function setup(
     core.saveState(GRADLE_USER_HOME, gradleUserHome)
 
     const cacheListener = new CacheListener()
-    await caches.restore(userHome, gradleUserHome, cacheListener, cacheConfig)
+    const cacheContent = new CacheContent(
+        userHome,
+        gradleUserHome,
+        cacheConfig,
+        new RemoteCacheAccessor(),
+        new CacheKeyGenerator()
+    )
+
+    await cacheContent.restore(cacheListener)
 
     core.saveState(CACHE_LISTENER, cacheListener.stringify())
 
@@ -72,7 +82,16 @@ export async function complete(cacheConfig: CacheConfig, summaryConfig: SummaryC
     const cacheListener: CacheListener = CacheListener.rehydrate(core.getState(CACHE_LISTENER))
 
     const daemonController = new DaemonController(buildResults)
-    await caches.save(userHome, gradleUserHome, cacheListener, daemonController, buildResults, cacheConfig)
+
+    const cacheContent = new CacheContent(
+        userHome,
+        gradleUserHome,
+        cacheConfig,
+        new RemoteCacheAccessor(),
+        new CacheKeyGenerator()
+    )
+
+    await cacheContent.save(cacheListener, daemonController, buildResults)
 
     const cachingReport = generateCachingReport(cacheListener)
     await jobSummary.generateJobSummary(buildResults, cachingReport, summaryConfig)
