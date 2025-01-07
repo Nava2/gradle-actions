@@ -3,22 +3,12 @@ import * as gradle from '../../execution/gradle'
 import * as dependencyGraph from '../../dependency-graph'
 
 import {parseArgsStringToArgv} from 'string-argv'
-import {
-    BuildScanConfig,
-    CacheConfig,
-    DependencyGraphConfig,
-    DependencyGraphOption,
-    GradleExecutionConfig,
-    setActionId,
-    SummaryConfig,
-    WrapperValidationConfig
-} from '../../configuration'
+import {DependencyGraphConfig, DependencyGraphOption, GradleExecutionConfig, setActionId} from '../../configuration'
 import {saveDeprecationState} from '../../deprecation-collector'
 import {handleMainActionError} from '../../errors'
 import {SetupGradleAction} from '../../setup-gradle'
-import {CacheContentFactory} from '../../caching/caches'
-import {RemoteCacheAccessor} from '../../caching/cache-utils'
-import {CacheKeyGenerator} from '../../caching/cache-key'
+import {GradleProvisioner} from '../../execution/provision'
+import {GradleExecutableExecutor} from '../../execution/gradle'
 
 /**
  * The main entry point for the action, called by Github Actions for the step.
@@ -28,15 +18,7 @@ export async function run(): Promise<void> {
         setActionId('gradle/actions/dependency-submission')
 
         // Configure Gradle environment (Gradle User Home)
-        const cacheConfig = new CacheConfig()
-        const setupGradleAction = new SetupGradleAction(
-            cacheConfig,
-            new BuildScanConfig(),
-            new WrapperValidationConfig(),
-            new SummaryConfig(),
-            new CacheContentFactory(cacheConfig, new RemoteCacheAccessor(), new CacheKeyGenerator())
-        )
-        await setupGradleAction.setup()
+        await SetupGradleAction.create().setup()
 
         // Capture the enabled state of dependency-graph
         const originallyEnabled = process.env['GITHUB_DEPENDENCY_GRAPH_ENABLED']
@@ -62,11 +44,16 @@ export async function run(): Promise<void> {
               ${additionalArgs}
         `
         const args: string[] = parseArgsStringToArgv(executionArgs)
-        await gradle.provisionAndMaybeExecute(
-            executionConfig.getGradleVersion(),
-            executionConfig.getBuildRootDirectory(),
+
+        const gradleExecutor = new GradleExecutableExecutor()
+        const gradleProvisioner = new GradleProvisioner(gradleExecutor)
+        await gradle.provisionAndMaybeExecute({
+            gradleProvisioner,
+            gradleExecutor,
+            gradleVersion: executionConfig.getGradleVersion(),
+            buildRootDirectory: executionConfig.getBuildRootDirectory(),
             args
-        )
+        })
 
         await dependencyGraph.complete(dependencyGraphConfig)
 

@@ -22,11 +22,18 @@ export class CacheContentFactory {
     private readonly cacheConfig: CacheConfig
     private readonly cacheAccessor: RemoteCacheAccessor
     private readonly cacheKeyGenerator: CacheKeyGenerator
+    private readonly cacheCleaner: CacheCleaner
 
-    constructor(cacheConfig: CacheConfig, cacheAccessor: RemoteCacheAccessor, cacheKeyGenerator: CacheKeyGenerator) {
+    constructor(
+        cacheConfig: CacheConfig,
+        cacheAccessor: RemoteCacheAccessor,
+        cacheKeyGenerator: CacheKeyGenerator,
+        cacheCleaner: CacheCleaner
+    ) {
         this.cacheConfig = cacheConfig
         this.cacheAccessor = cacheAccessor
         this.cacheKeyGenerator = cacheKeyGenerator
+        this.cacheCleaner = cacheCleaner
     }
 
     create({userHome, gradleUserHome}: {userHome: string; gradleUserHome: string}): CacheContent {
@@ -35,7 +42,8 @@ export class CacheContentFactory {
             gradleUserHome,
             cacheConfig: this.cacheConfig,
             cacheAccessor: this.cacheAccessor,
-            cacheKeyGenerator: this.cacheKeyGenerator
+            cacheKeyGenerator: this.cacheKeyGenerator,
+            cacheCleaner: this.cacheCleaner
         })
     }
 }
@@ -47,6 +55,7 @@ export class CacheContent {
     private readonly cacheConfig: CacheConfig
     private readonly cacheAccessor: RemoteCacheAccessor
     private readonly cacheKeyGenerator: CacheKeyGenerator
+    private readonly cacheCleaner: CacheCleaner
     private readonly userHome: string
     private readonly gradleUserHome: string
 
@@ -55,19 +64,22 @@ export class CacheContent {
         gradleUserHome,
         cacheConfig,
         cacheAccessor,
-        cacheKeyGenerator
+        cacheKeyGenerator,
+        cacheCleaner
     }: {
         userHome: string
         gradleUserHome: string
         cacheConfig: CacheConfig
         cacheAccessor: RemoteCacheAccessor
         cacheKeyGenerator: CacheKeyGenerator
+        cacheCleaner: CacheCleaner
     }) {
         this.userHome = userHome
         this.gradleUserHome = gradleUserHome
         this.cacheConfig = cacheConfig
         this.cacheAccessor = cacheAccessor
         this.cacheKeyGenerator = cacheKeyGenerator
+        this.cacheCleaner = cacheCleaner
     }
 
     async restore(cacheListener: CacheListener): Promise<void> {
@@ -105,8 +117,7 @@ export class CacheContent {
 
         if (this.cacheConfig.isCacheCleanupEnabled()) {
             core.info('Preparing cache for cleanup.')
-            const cacheCleaner = new CacheCleaner(this.gradleUserHome, process.env['RUNNER_TEMP']!)
-            await cacheCleaner.prepare()
+            await this.cacheCleaner.prepare()
         }
 
         if (this.cacheConfig.isCacheWriteOnly()) {
@@ -151,7 +162,7 @@ export class CacheContent {
                 cacheListener.setCacheCleanupDisabled(CLEANUP_DISABLED_DUE_TO_CONFIG_CACHE_HIT)
             } else if (this.cacheConfig.shouldPerformCacheCleanup(buildResults.anyFailed())) {
                 cacheListener.setCacheCleanupEnabled()
-                await this.performCacheCleanup(this.gradleUserHome)
+                await this.performCacheCleanup()
             } else {
                 core.info('Not performing cache-cleanup due to build failure')
                 cacheListener.setCacheCleanupDisabled(CLEANUP_DISABLED_DUE_TO_FAILURE)
@@ -163,10 +174,9 @@ export class CacheContent {
         })
     }
 
-    async performCacheCleanup(gradleUserHome: string): Promise<void> {
-        const cacheCleaner = new CacheCleaner(gradleUserHome, process.env['RUNNER_TEMP']!)
+    async performCacheCleanup(): Promise<void> {
         try {
-            await cacheCleaner.forceCleanup()
+            await this.cacheCleaner.forceCleanup(this.gradleUserHome, process.env['RUNNER_TEMP']!)
         } catch (e) {
             core.warning(`Cache cleanup failed. Will continue. ${String(e)}`)
         }

@@ -20,6 +20,9 @@ import * as wrapperValidator from './wrapper-validation/wrapper-validator'
 import {RemoteCacheAccessor} from './caching/cache-utils'
 import {CacheKeyGenerator} from './caching/cache-key'
 import {CacheContentFactory} from './caching/caches'
+import {CacheCleaner} from './caching/cache-cleaner'
+import {GradleProvisioner} from './execution/provision'
+import {GradleExecutableExecutor} from './execution/gradle'
 
 const GRADLE_SETUP_VAR = 'GRADLE_BUILD_ACTION_SETUP_COMPLETED'
 const USER_HOME = 'USER_HOME'
@@ -58,7 +61,12 @@ export class SetupGradleAction {
             new BuildScanConfig(),
             new WrapperValidationConfig(),
             new SummaryConfig(),
-            new CacheContentFactory(cacheConfig, new RemoteCacheAccessor(), new CacheKeyGenerator())
+            new CacheContentFactory(
+                cacheConfig,
+                new RemoteCacheAccessor(),
+                new CacheKeyGenerator(),
+                new CacheCleaner(new GradleProvisioner(new GradleExecutableExecutor()))
+            )
         )
     }
 

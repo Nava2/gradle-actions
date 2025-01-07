@@ -6,12 +6,10 @@ import path from 'path'
 import {GradleProvisioner} from '../execution/provision'
 
 export class CacheCleaner {
-    private readonly gradleUserHome: string
-    private readonly tmpDir: string
+    private readonly gradleProvisioner: GradleProvisioner
 
-    constructor(gradleUserHome: string, tmpDir: string) {
-        this.gradleUserHome = gradleUserHome
-        this.tmpDir = tmpDir
+    constructor(gradleProvisioner: GradleProvisioner) {
+        this.gradleProvisioner = gradleProvisioner
     }
 
     async prepare(): Promise<string> {
@@ -21,15 +19,23 @@ export class CacheCleaner {
         return timestamp
     }
 
-    async forceCleanup(): Promise<void> {
+    async forceCleanup(gradleUserHome: string, tmpDir: string): Promise<void> {
         const cleanTimestamp = core.getState('clean-timestamp')
-        await this.forceCleanupFilesOlderThan(cleanTimestamp)
+        await this.forceCleanupFilesOlderThan({gradleUserHome, tmpDir, cleanTimestamp})
     }
 
     // Visible for testing
-    async forceCleanupFilesOlderThan(cleanTimestamp: string): Promise<void> {
+    async forceCleanupFilesOlderThan({
+        gradleUserHome,
+        tmpDir,
+        cleanTimestamp
+    }: {
+        gradleUserHome: string
+        tmpDir: string
+        cleanTimestamp: string
+    }): Promise<void> {
         // Run a dummy Gradle build to trigger cache cleanup
-        const cleanupProjectDir = path.resolve(this.tmpDir, 'dummy-cleanup-project')
+        const cleanupProjectDir = path.resolve(tmpDir, 'dummy-cleanup-project')
         fs.mkdirSync(cleanupProjectDir, {recursive: true})
         fs.writeFileSync(
             path.resolve(cleanupProjectDir, 'settings.gradle'),
@@ -56,18 +62,26 @@ export class CacheCleaner {
         fs.writeFileSync(path.resolve(cleanupProjectDir, 'build.gradle'), 'task("noop") {}')
 
         // TODO: This is ineffective: we should be using the newest version of Gradle that ran a build, or a newer version if it's available on PATH.
-        const executable = await new GradleProvisioner().provisionGradleAtLeast('8.12')
+        const executable = await this.gradleProvisioner.provisionGradleAtLeast('8.12')
 
         await core.group('Executing Gradle to clean up caches', async () => {
             core.info(`Cleaning up caches last used before ${cleanTimestamp}`)
-            await this.executeCleanupBuild(executable, cleanupProjectDir)
+            await this.executeCleanupBuild({gradleUserHome, executable, cleanupProjectDir})
         })
     }
 
-    private async executeCleanupBuild(executable: string, cleanupProjectDir: string): Promise<void> {
+    private async executeCleanupBuild({
+        gradleUserHome,
+        executable,
+        cleanupProjectDir
+    }: {
+        gradleUserHome: string
+        executable: string
+        cleanupProjectDir: string
+    }): Promise<void> {
         const args = [
             '-g',
-            this.gradleUserHome,
+            gradleUserHome,
             '-I',
             'init.gradle',
             '--info',

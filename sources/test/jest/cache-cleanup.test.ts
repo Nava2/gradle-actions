@@ -4,18 +4,21 @@ import * as glob from '@actions/glob'
 import fs from 'fs'
 import path from 'path'
 import {CacheCleaner} from '../../src/caching/cache-cleaner'
+import { GradleProvisioner } from '../../src/execution/provision'
+import { GradleExecutableExecutor } from '../../src/execution/gradle'
 
 jest.setTimeout(120000)
+
+const cacheCleaner = new CacheCleaner(new GradleProvisioner(new GradleExecutableExecutor()))
 
 test('will cleanup unused dependency jars and build-cache entries', async () => {
     const projectRoot = prepareTestProject()
     const gradleUserHome = path.resolve(projectRoot, 'HOME')
     const tmpDir = path.resolve(projectRoot, 'tmp')
-    const cacheCleaner = new CacheCleaner(gradleUserHome, tmpDir)
 
     await runGradleBuild(projectRoot, 'build', '3.1')
     
-    const timestamp = await cacheCleaner.prepare()
+    const cleanTimestamp = await cacheCleaner.prepare()
 
     await runGradleBuild(projectRoot, 'build', '3.1.1')
 
@@ -27,7 +30,7 @@ test('will cleanup unused dependency jars and build-cache entries', async () => 
     expect(fs.existsSync(commonsMath311)).toBe(true)
     expect(fs.readdirSync(buildCacheDir).length).toBe(4) // gc.properties, build-cache-1.lock, and 2 task entries
 
-    await cacheCleaner.forceCleanupFilesOlderThan(timestamp)
+    await cacheCleaner.forceCleanupFilesOlderThan({gradleUserHome, tmpDir, cleanTimestamp})
 
     expect(fs.existsSync(commonsMath31)).toBe(false)
     expect(fs.existsSync(commonsMath311)).toBe(true)
@@ -44,7 +47,7 @@ test('will cleanup unused gradle versions', async () => {
     await runGradleWrapperBuild(projectRoot, 'build')
     await runGradleBuild(projectRoot, 'build')
 
-    const timestamp = await cacheCleaner.prepare()
+    const cleanTimestamp = await cacheCleaner.prepare()
 
     // Run with only one of these versions
     await runGradleBuild(projectRoot, 'build')
@@ -67,7 +70,7 @@ test('will cleanup unused gradle versions', async () => {
     // The wrapper won't be removed if it was recently downloaded. Age it.
     setUtimes(wrapper802, new Date(Date.now() - 48 * 60 * 60 * 1000))
 
-    await cacheCleaner.forceCleanupFilesOlderThan(timestamp)
+    await cacheCleaner.forceCleanupFilesOlderThan({gradleUserHome, tmpDir, cleanTimestamp})
 
     expect(fs.existsSync(gradle802)).toBe(false)
     expect(fs.existsSync(transforms3)).toBe(false)

@@ -4,6 +4,7 @@ import {failOnUseOfRemovedFeature, saveDeprecationState} from '../../deprecation
 import {handleMainActionError} from '../../errors'
 import {SetupGradleAction} from '../../setup-gradle'
 import {GradleProvisioner} from '../../execution/provision'
+import {GradleExecutableExecutor} from '../../execution/gradle'
 
 /**
  * The main entry point for the action, called by Github Actions for the step.
@@ -26,7 +27,9 @@ export async function run(): Promise<void> {
 
         const config = new GradleExecutionConfig()
         config.verifyNoArguments()
-        await new GradleProvisioner().provisionGradle(config.getGradleVersion())
+
+        const gradleExecutor = new GradleExecutableExecutor()
+        await new GradleProvisioner(gradleExecutor).provisionGradle(config.getGradleVersion())
 
         saveDeprecationState()
     } catch (error) {
