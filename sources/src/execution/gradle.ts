@@ -3,8 +3,8 @@ import * as exec from '@actions/exec'
 
 import which from 'which'
 import * as semver from 'semver'
-import * as provisioner from './provision'
 import * as gradlew from './gradlew'
+import {GradleProvisioner} from './provision'
 
 export async function provisionAndMaybeExecute(
     gradleVersion: string,
@@ -12,7 +12,7 @@ export async function provisionAndMaybeExecute(
     args: string[]
 ): Promise<void> {
     // Download and install Gradle if required
-    const executable = await provisioner.provisionGradle(gradleVersion)
+    const executable = await new GradleProvisioner().provisionGradle(gradleVersion)
 
     // Only execute if arguments have been provided
     if (args.length > 0) {

@@ -13,26 +13,28 @@ import {CacheConfig} from '../configuration'
 
 const gradleVersionsBaseUrl = 'https://services.gradle.org/versions'
 
-/**
- * Install any configured version of Gradle, adding the executable to the PATH.
- * @return Installed Gradle executable or undefined if no version configured.
- */
-export async function provisionGradle(gradleVersion: string): Promise<string | undefined> {
-    if (gradleVersion !== '' && gradleVersion !== 'wrapper') {
-        return addToPath(await installGradle(gradleVersion))
+export class GradleProvisioner {
+    /**
+     * Install any configured version of Gradle, adding the executable to the PATH.
+     * @return Installed Gradle executable or undefined if no version configured.
+     */
+    async provisionGradle(gradleVersion: string): Promise<string | undefined> {
+        if (gradleVersion !== '' && gradleVersion !== 'wrapper') {
+            return addToPath(await installGradle(gradleVersion))
+        }
+
+        return undefined
     }
 
-    return undefined
-}
-
-/**
- * Ensure that the Gradle version on PATH is no older than the specified version.
- * If the version on PATH is older, install the specified version and add it to the PATH.
- * @return Installed Gradle executable or undefined if no version configured.
- */
-export async function provisionGradleAtLeast(gradleVersion: string): Promise<string> {
-    const installedVersion = await installGradleVersionAtLeast(await gradleRelease(gradleVersion))
-    return addToPath(installedVersion)
+    /**
+     * Ensure that the Gradle version on PATH is no older than the specified version.
+     * If the version on PATH is older, install the specified version and add it to the PATH.
+     * @return Installed Gradle executable or undefined if no version configured.
+     */
+    async provisionGradleAtLeast(gradleVersion: string): Promise<string> {
+        const installedVersion = await installGradleVersionAtLeast(await gradleRelease(gradleVersion))
+        return addToPath(installedVersion)
+    }
 }
 
 async function addToPath(executable: string): Promise<string> {

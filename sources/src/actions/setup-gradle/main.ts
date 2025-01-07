@@ -1,9 +1,9 @@
-import * as provisioner from '../../execution/provision'
 import * as dependencyGraph from '../../dependency-graph'
 import {DependencyGraphConfig, GradleExecutionConfig, getActionId, setActionId} from '../../configuration'
 import {failOnUseOfRemovedFeature, saveDeprecationState} from '../../deprecation-collector'
 import {handleMainActionError} from '../../errors'
 import {SetupGradleAction} from '../../setup-gradle'
+import {GradleProvisioner} from '../../execution/provision'
 
 /**
  * The main entry point for the action, called by Github Actions for the step.
@@ -26,7 +26,7 @@ export async function run(): Promise<void> {
 
         const config = new GradleExecutionConfig()
         config.verifyNoArguments()
-        await provisioner.provisionGradle(config.getGradleVersion())
+        await new GradleProvisioner().provisionGradle(config.getGradleVersion())
 
         saveDeprecationState()
     } catch (error) {

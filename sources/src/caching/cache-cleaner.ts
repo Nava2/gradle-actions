@@ -3,7 +3,7 @@ import * as exec from '@actions/exec'
 
 import fs from 'fs'
 import path from 'path'
-import * as provisioner from '../execution/provision'
+import {GradleProvisioner} from '../execution/provision'
 
 export class CacheCleaner {
     private readonly gradleUserHome: string
@@ -56,7 +56,7 @@ export class CacheCleaner {
         fs.writeFileSync(path.resolve(cleanupProjectDir, 'build.gradle'), 'task("noop") {}')
 
         // TODO: This is ineffective: we should be using the newest version of Gradle that ran a build, or a newer version if it's available on PATH.
-        const executable = await provisioner.provisionGradleAtLeast('8.12')
+        const executable = await new GradleProvisioner().provisionGradleAtLeast('8.12')
 
         await core.group('Executing Gradle to clean up caches', async () => {
             core.info(`Cleaning up caches last used before ${cleanTimestamp}`)
