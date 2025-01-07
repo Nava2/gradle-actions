@@ -1,4 +1,4 @@
-import {githubActionGradleEnv} from '../../env/github-action'
+import {githubActionGradleEnv} from '../github-env'
 import {handlePostActionError} from '../../errors'
 import {setupDependencies} from '../../inject'
 import {SetupGradleAction} from '../../setup-gradle'

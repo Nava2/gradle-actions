@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals'
 
 import { CacheEntryListener, CacheListener } from '../../src/caching/cache-reporting'
-import { githubActionGradleEnv } from '../../src/env/github-action'
+import { githubActionGradleEnv } from '../../src/actions/github-env'
 
 describe('caching report', () => {
     describe('reports not fully restored', () => {

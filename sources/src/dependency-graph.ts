@@ -11,7 +11,7 @@ import fs from 'fs'
 
 import {JobFailure} from './errors'
 import {DependencyGraphConfig, DependencyGraphOption, getGithubToken} from './env/configuration'
-import {githubActionGradleEnv} from './env/github-action'
+import {githubActionGradleEnv} from './actions/github-env'
 import {GradleEnv} from './env/env'
 
 const DEPENDENCY_GRAPH_PREFIX = 'dependency-graph_'

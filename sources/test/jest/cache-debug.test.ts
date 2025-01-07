@@ -5,7 +5,7 @@ import { describe, expect, it } from '@jest/globals'
 import { GradleUserHomeCache } from "../../src/caching/gradle-user-home-cache"
 import { CacheKeyGenerator } from '../../src/caching/cache-key'
 import { RemoteCacheAccessor } from '../../src/caching/cache-utils'
-import { githubActionGradleEnv } from '../../src/env/github-action'
+import { githubActionGradleEnv } from '../../src/actions/github-env'
 import { CacheConfig } from '../../src/env/configuration'
 
 const testTmp = 'test/jest/tmp'

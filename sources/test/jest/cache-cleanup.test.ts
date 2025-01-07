@@ -7,8 +7,8 @@ import { expect, test, jest } from '@jest/globals'
 import { CacheCleaner } from '../../src/caching/cache-cleaner'
 import { GradleProvisioner } from '../../src/execution/provision'
 import { GradleExecutableExecutor } from '../../src/execution/gradle'
-import { githubActionGradleEnv } from '../../src/env/github-action'
 import { CacheConfig } from '../../src/env/configuration'
+import { githubActionGradleEnv } from '../../src/actions/github-env'
 
 jest.setTimeout(120000)
 

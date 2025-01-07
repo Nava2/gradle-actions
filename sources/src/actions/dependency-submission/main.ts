@@ -7,8 +7,8 @@ import {DependencyGraphOption, setActionId} from '../../env/configuration'
 import {saveDeprecationState} from '../../deprecation-collector'
 import {handleMainActionError} from '../../errors'
 import {SetupGradleAction} from '../../setup-gradle'
-import {githubActionGradleEnv} from '../../env/github-action'
 import {setupDependencies} from '../../inject'
+import {githubActionGradleEnv} from '../github-env'
 
 /**
  * The main entry point for the action, called by Github Actions for the step.

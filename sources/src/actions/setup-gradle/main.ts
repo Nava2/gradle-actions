@@ -4,7 +4,7 @@ import {failOnUseOfRemovedFeature, saveDeprecationState} from '../../deprecation
 import {handleMainActionError} from '../../errors'
 import {SetupGradleAction} from '../../setup-gradle'
 import {setupDependencies} from '../../inject'
-import {githubActionGradleEnv} from '../../env/github-action'
+import {githubActionGradleEnv} from '../github-env'
 
 /**
  * The main entry point for the action, called by Github Actions for the step.
