@@ -19,12 +19,19 @@ import {
 import * as wrapperValidator from './wrapper-validation/wrapper-validator'
 import {RemoteCacheAccessor} from './caching/cache-utils'
 import {CacheKeyGenerator} from './caching/cache-key'
-import {CacheContent} from './caching/caches'
+import {CacheContentFactory} from './caching/caches'
 
 const GRADLE_SETUP_VAR = 'GRADLE_BUILD_ACTION_SETUP_COMPLETED'
 const USER_HOME = 'USER_HOME'
 const GRADLE_USER_HOME = 'GRADLE_USER_HOME'
 const CACHE_LISTENER = 'CACHE_LISTENER'
+
+// TODO inject
+const cacheContentFactory = new CacheContentFactory(
+    new CacheConfig(),
+    new RemoteCacheAccessor(),
+    new CacheKeyGenerator()
+)
 
 export async function setup(
     cacheConfig: CacheConfig,
@@ -48,15 +55,9 @@ export async function setup(
     core.saveState(USER_HOME, userHome)
     core.saveState(GRADLE_USER_HOME, gradleUserHome)
 
-    const cacheListener = new CacheListener()
-    const cacheContent = new CacheContent(
-        userHome,
-        gradleUserHome,
-        cacheConfig,
-        new RemoteCacheAccessor(),
-        new CacheKeyGenerator()
-    )
+    const cacheContent = cacheContentFactory.create({userHome, gradleUserHome})
 
+    const cacheListener = new CacheListener()
     await cacheContent.restore(cacheListener)
 
     core.saveState(CACHE_LISTENER, cacheListener.stringify())
@@ -83,13 +84,7 @@ export async function complete(cacheConfig: CacheConfig, summaryConfig: SummaryC
 
     const daemonController = new DaemonController(buildResults)
 
-    const cacheContent = new CacheContent(
-        userHome,
-        gradleUserHome,
-        cacheConfig,
-        new RemoteCacheAccessor(),
-        new CacheKeyGenerator()
-    )
+    const cacheContent = cacheContentFactory.create({userHome, gradleUserHome})
 
     await cacheContent.save(cacheListener, daemonController, buildResults)
 

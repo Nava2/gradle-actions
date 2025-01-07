@@ -16,6 +16,31 @@ import {RemoteCacheAccessor} from './cache-utils'
 const CACHE_RESTORED_VAR = 'GRADLE_BUILD_ACTION_CACHE_RESTORED'
 
 /**
+ * Provides a small factory for setting up `CacheContent` to easily create new instances.
+ */
+export class CacheContentFactory {
+    private readonly cacheConfig: CacheConfig
+    private readonly cacheAccessor: RemoteCacheAccessor
+    private readonly cacheKeyGenerator: CacheKeyGenerator
+
+    constructor(cacheConfig: CacheConfig, cacheAccessor: RemoteCacheAccessor, cacheKeyGenerator: CacheKeyGenerator) {
+        this.cacheConfig = cacheConfig
+        this.cacheAccessor = cacheAccessor
+        this.cacheKeyGenerator = cacheKeyGenerator
+    }
+
+    create({userHome, gradleUserHome}: {userHome: string; gradleUserHome: string}): CacheContent {
+        return new CacheContent({
+            userHome,
+            gradleUserHome,
+            cacheConfig: this.cacheConfig,
+            cacheAccessor: this.cacheAccessor,
+            cacheKeyGenerator: this.cacheKeyGenerator
+        })
+    }
+}
+
+/**
  * Provides restore/save functionality for caching content in a build.
  */
 export class CacheContent {
@@ -25,13 +50,19 @@ export class CacheContent {
     private readonly userHome: string
     private readonly gradleUserHome: string
 
-    constructor(
-        userHome: string,
-        gradleUserHome: string,
-        cacheConfig: CacheConfig,
-        cacheAccessor: RemoteCacheAccessor,
+    constructor({
+        userHome,
+        gradleUserHome,
+        cacheConfig,
+        cacheAccessor,
+        cacheKeyGenerator
+    }: {
+        userHome: string
+        gradleUserHome: string
+        cacheConfig: CacheConfig
+        cacheAccessor: RemoteCacheAccessor
         cacheKeyGenerator: CacheKeyGenerator
-    ) {
+    }) {
         this.userHome = userHome
         this.gradleUserHome = gradleUserHome
         this.cacheConfig = cacheConfig
