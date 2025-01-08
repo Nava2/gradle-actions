@@ -1,12 +1,10 @@
-import * as cache from '@actions/cache'
-import * as exec from '@actions/exec'
-
 import * as crypto from 'crypto'
 import * as path from 'path'
 import * as fs from 'fs'
 
 import {CacheEntryListener} from './cache-reporting'
 import {GradleEnv} from '../env/env'
+import {CacheEntryAlreadyExistsError, CacheValidationError, GradleEnvCacheEntry} from '../env/cache'
 
 const SEGMENT_DOWNLOAD_TIMEOUT_VAR = 'SEGMENT_DOWNLOAD_TIMEOUT_MINS'
 const SEGMENT_DOWNLOAD_TIMEOUT_DEFAULT = 10 * 60 * 1000 // 10 minutes
@@ -38,7 +36,7 @@ export class RemoteCacheAccessor {
         cacheKey: string,
         cacheRestoreKeys: string[],
         listener: CacheEntryListener
-    ): Promise<cache.CacheEntry | undefined> {
+    ): Promise<GradleEnvCacheEntry | undefined> {
         listener.markRequested(cacheKey, cacheRestoreKeys)
         try {
             const startTime = Date.now()
@@ -46,7 +44,12 @@ export class RemoteCacheAccessor {
             const cacheRestoreOptions = process.env[SEGMENT_DOWNLOAD_TIMEOUT_VAR]
                 ? {}
                 : {segmentTimeoutInMs: SEGMENT_DOWNLOAD_TIMEOUT_DEFAULT}
-            const restoredEntry = await cache.restoreCache(cachePath, cacheKey, cacheRestoreKeys, cacheRestoreOptions)
+            const restoredEntry = await this.env.cache.restoreCache(
+                cachePath,
+                cacheKey,
+                cacheRestoreKeys,
+                cacheRestoreOptions
+            )
             if (restoredEntry !== undefined) {
                 const restoreTime = Date.now() - startTime
                 listener.markRestored(restoredEntry.key, restoredEntry.size, restoreTime)
@@ -65,12 +68,12 @@ export class RemoteCacheAccessor {
     async saveCache(cachePath: string[], cacheKey: string, listener: CacheEntryListener): Promise<void> {
         try {
             const startTime = Date.now()
-            const savedEntry = await cache.saveCache(cachePath, cacheKey)
+            const savedEntry = await this.env.cache.saveCache(cachePath, cacheKey)
             const saveTime = Date.now() - startTime
             listener.markSaved(savedEntry.key, savedEntry.size, saveTime)
             this.env.log.info(`Saved cache entry with key ${cacheKey} from ${cachePath.join()} in ${saveTime}ms`)
         } catch (error) {
-            if (error instanceof cache.ReserveCacheError) {
+            if (error instanceof CacheEntryAlreadyExistsError) {
                 listener.markAlreadyExists(cacheKey)
             } else {
                 listener.markNotSaved((error as Error).message)
@@ -85,11 +88,11 @@ export class RemoteCacheAccessor {
 }
 
 export function handleCacheFailure(env: GradleEnv, error: unknown, message: string): void {
-    if (error instanceof cache.ValidationError) {
+    if (error instanceof CacheValidationError) {
         // Fail on cache validation errors
         throw error
     }
-    if (error instanceof cache.ReserveCacheError) {
+    if (error instanceof CacheEntryAlreadyExistsError) {
         // Reserve cache errors are expected if the artifact has been previously cached
         env.log.info(`${message}: ${error}`)
     } else {
@@ -122,7 +125,7 @@ export async function tryDelete(env: GradleEnv, file: string): Promise<void> {
             if (attempt === maxAttempts) {
                 env.log.warning(`Failed to delete ${file}, which will impact caching. 
 It is likely locked by another process. Output of 'jps -ml':
-${await getJavaProcesses()}`)
+${await getJavaProcesses(env)}`)
                 throw error
             } else {
                 env.cacheDebug(`Attempt to delete ${file} failed. Will try again.`)
@@ -136,7 +139,7 @@ async function delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-async function getJavaProcesses(): Promise<string> {
-    const jpsOutput = await exec.getExecOutput('jps', ['-lm'])
+async function getJavaProcesses(env: GradleEnv): Promise<string> {
+    const jpsOutput = await env.exec.getExecOutput('jps', ['-lm'])
     return jpsOutput.stdout
 }

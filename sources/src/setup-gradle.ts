@@ -81,7 +81,7 @@ export class SetupGradleAction {
             gradleUserHome
         })
 
-        const cacheListener = new CacheListener()
+        const cacheListener = new CacheListener(this.env)
         await cacheContent.restore(cacheListener)
 
         this.state.set(CACHE_LISTENER, cacheListener.stringify())
@@ -108,7 +108,7 @@ export class SetupGradleAction {
 
         const userHome = this.state.get(USER_HOME)
         const gradleUserHome = this.state.get(GRADLE_USER_HOME)
-        const cacheListener = CacheListener.rehydrate(this.state.get(CACHE_LISTENER))
+        const cacheListener = CacheListener.rehydrate(this.env, this.state.get(CACHE_LISTENER))
 
         const daemonController = new DaemonController(buildResults)
 

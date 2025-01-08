@@ -6,8 +6,10 @@ import {
     GradleEnvExecOptions
 } from '../env/env'
 import * as core from '@actions/core'
+import * as cache from '@actions/cache'
 import * as exec from '@actions/exec'
 import * as github from '@actions/github'
+import {CacheEntryAlreadyExistsError, CacheValidationError, GradleEnvCache, GradleEnvCacheEntry} from '../env/cache'
 
 const githubContext: GradleContext = {
     workflowIdentifier: github.context.workflow,
@@ -46,6 +48,24 @@ class GitHubActionGradleEnv implements GradleEnvImplementation {
     }
 
     readonly context: GradleContext = githubContext
+
+    readonly cache: GradleEnvCache = {
+        isAvailable: cache.isFeatureAvailable,
+        saveCache: async (paths: string[], key: string): Promise<GradleEnvCacheEntry> => {
+            try {
+                return await cache.saveCache(paths, key)
+            } catch (error) {
+                if (error instanceof cache.ReserveCacheError) {
+                    throw new CacheEntryAlreadyExistsError(error.message)
+                } else if (error instanceof cache.ValidationError) {
+                    throw new CacheValidationError(error.message)
+                } else {
+                    throw error
+                }
+            }
+        },
+        restoreCache: cache.restoreCache
+    }
 
     isDebug(): boolean {
         return core.isDebug()
