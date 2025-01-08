@@ -8,7 +8,7 @@ import {RemoteCacheAccessor, tryDelete} from './cache-utils'
 import {CacheConfig, ACTION_METADATA_DIR} from '../env/configuration'
 import {GradleHomeEntryExtractor, ConfigurationCacheEntryExtractor, EntryExtractor} from './gradle-home-extry-extractor'
 import {getPredefinedToolchains, mergeToolchainContent, readResourceFileAsString} from './gradle-user-home-utils'
-import {GradleEnv} from '../env/env'
+import {GradleEnv, GradleEnvLogger, GradleEnvState} from '../env/env'
 
 const RESTORED_CACHE_KEY_KEY = 'restored-cache-key'
 
@@ -17,6 +17,8 @@ export class GradleUserHomeCache {
     private readonly cacheDescription = 'Gradle User Home'
 
     private readonly env: GradleEnv
+    private readonly log: GradleEnvLogger
+    private readonly state: GradleEnvState
     private readonly userHome: string
     private readonly gradleUserHome: string
     private readonly cacheConfig: CacheConfig
@@ -32,6 +34,8 @@ export class GradleUserHomeCache {
         cacheKeyGenerator: CacheKeyGenerator
     ) {
         this.env = env
+        this.log = env.log
+        this.state = env.state
         this.userHome = userHome
         this.gradleUserHome = gradleUserHome
         this.cacheConfig = cacheConfig
@@ -45,7 +49,7 @@ export class GradleUserHomeCache {
         // Export the GRADLE_ENCRYPTION_KEY variable if provided
         const encryptionKey = this.cacheConfig.getCacheEncryptionKey()
         if (encryptionKey) {
-            this.env.exportVariable('GRADLE_ENCRYPTION_KEY', encryptionKey)
+            this.state.exportVariable('GRADLE_ENCRYPTION_KEY', encryptionKey)
         }
     }
 
@@ -80,16 +84,16 @@ export class GradleUserHomeCache {
             entryListener
         )
         if (!cacheResult) {
-            this.env.log.info(`${this.cacheDescription} cache not found. Will initialize empty.`)
+            this.log.info(`${this.cacheDescription} cache not found. Will initialize empty.`)
             return
         }
 
-        this.env.state.set(RESTORED_CACHE_KEY_KEY, cacheResult.key)
+        this.state.set(RESTORED_CACHE_KEY_KEY, cacheResult.key)
 
         try {
             await this.afterRestore(listener)
         } catch (error) {
-            this.env.log.warning(`Restore ${this.cacheDescription} failed in 'afterRestore': ${error}`)
+            this.log.warning(`Restore ${this.cacheDescription} failed in 'afterRestore': ${error}`)
         }
     }
 
@@ -116,11 +120,11 @@ export class GradleUserHomeCache {
      */
     async save(listener: CacheListener): Promise<void> {
         const cacheKey = this.cacheKeyGenerator.generateCacheKey(this.cacheName, this.cacheConfig).key
-        const restoredCacheKey = this.env.state.get(RESTORED_CACHE_KEY_KEY)
+        const restoredCacheKey = this.state.get(RESTORED_CACHE_KEY_KEY)
         const gradleHomeEntryListener = listener.entry(this.cacheDescription)
 
         if (restoredCacheKey && cacheKey === restoredCacheKey) {
-            this.env.log.info(`Cache hit occurred on the cache key ${cacheKey}, not saving cache.`)
+            this.log.info(`Cache hit occurred on the cache key ${cacheKey}, not saving cache.`)
 
             for (const entryListener of listener.cacheEntries) {
                 if (entryListener === gradleHomeEntryListener) {
@@ -135,7 +139,7 @@ export class GradleUserHomeCache {
         try {
             await this.beforeSave(listener)
         } catch (error) {
-            this.env.log.warning(`Save ${this.cacheDescription} failed in 'beforeSave': ${error}`)
+            this.log.warning(`Save ${this.cacheDescription} failed in 'beforeSave': ${error}`)
             return
         }
 
@@ -261,14 +265,14 @@ export class GradleUserHomeCache {
             fs.mkdirSync(m2dir, {recursive: true})
             fs.writeFileSync(toolchainXmlTarget, preInstalledToolchains)
 
-            this.env.log.info(`Wrote default JDK locations to ${toolchainXmlTarget}`)
+            this.log.info(`Wrote default JDK locations to ${toolchainXmlTarget}`)
         } else {
             // Merge into an existing toolchains.xml file
             const existingToolchainContent = fs.readFileSync(toolchainXmlTarget, 'utf8')
             const mergedContent = mergeToolchainContent(existingToolchainContent, preInstalledToolchains)
 
             fs.writeFileSync(toolchainXmlTarget, mergedContent)
-            this.env.log.info(`Merged default JDK locations into ${toolchainXmlTarget}`)
+            this.log.info(`Merged default JDK locations into ${toolchainXmlTarget}`)
         }
     }
 
@@ -282,11 +286,11 @@ export class GradleUserHomeCache {
         const infoProperties = `org.gradle.logging.level=info\norg.gradle.logging.stacktrace=all\n`
         const propertiesFile = path.resolve(this.gradleUserHome, 'gradle.properties')
         if (fs.existsSync(propertiesFile)) {
-            this.env.log.info(`Merged --info and --stacktrace into existing ${propertiesFile} file`)
+            this.log.info(`Merged --info and --stacktrace into existing ${propertiesFile} file`)
             const existingProperties = fs.readFileSync(propertiesFile, 'utf-8')
             fs.writeFileSync(propertiesFile, `${infoProperties}\n${existingProperties}`)
         } else {
-            this.env.log.info(`Created a new ${propertiesFile} with --info and --stacktrace`)
+            this.log.info(`Created a new ${propertiesFile} with --info and --stacktrace`)
             fs.writeFileSync(propertiesFile, infoProperties)
         }
     }
@@ -308,9 +312,9 @@ export class GradleUserHomeCache {
             ignoreReturnCode: true
         })
 
-        this.env.log.info(`Gradle User Home (directories >5M): ${label}`)
+        this.log.info(`Gradle User Home (directories >5M): ${label}`)
 
-        this.env.log.info(
+        this.log.info(
             result.stdout
                 .trimEnd()
                 .replace(/\t/g, '    ')
@@ -321,6 +325,6 @@ export class GradleUserHomeCache {
                 .join('\n')
         )
 
-        this.env.log.info('-----------------------')
+        this.log.info('-----------------------')
     }
 }

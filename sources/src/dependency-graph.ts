@@ -79,7 +79,7 @@ async function downloadAndSubmitDependencyGraphs(env: GradleEnv, config: Depende
     }
 
     try {
-        await submitDependencyGraphs(env, await downloadDependencyGraphs(config))
+        await submitDependencyGraphs(env, await downloadDependencyGraphs(env, config))
     } catch (e) {
         warnOrFail(config, DependencyGraphOption.DownloadAndSubmit, e)
     }
@@ -113,10 +113,10 @@ async function findAndUploadDependencyGraphs(config: DependencyGraphConfig): Pro
     await uploadDependencyGraphs(await findDependencyGraphFiles(), config)
 }
 
-async function downloadDependencyGraphs(config: DependencyGraphConfig): Promise<string[]> {
+async function downloadDependencyGraphs(env: GradleEnv, config: DependencyGraphConfig): Promise<string[]> {
     const findBy = github.context.payload.workflow_run
         ? {
-              token: getGithubToken(),
+              token: getGithubToken(env),
               workflowRunId: github.context.payload.workflow_run.id,
               repositoryName: github.context.repo.repo,
               repositoryOwner: github.context.repo.owner
@@ -207,7 +207,7 @@ Note that this permission is never available for a 'pull_request' trigger from a
 }
 
 async function submitDependencyGraphFile(env: GradleEnv, jsonFile: string): Promise<void> {
-    const octokit = getOctokit()
+    const octokit = getOctokit(env)
     const jsonContent = fs.readFileSync(jsonFile, 'utf8')
 
     const jsonObject = JSON.parse(jsonContent)
@@ -240,8 +240,8 @@ function warnOrFail(config: DependencyGraphConfig, option: String, error: unknow
     core.warning(`Failed to ${option} dependency graph. Will continue.\n${String(error)}`)
 }
 
-function getOctokit(): InstanceType<typeof GitHub> {
-    return github.getOctokit(getGithubToken())
+function getOctokit(env: GradleEnv): InstanceType<typeof GitHub> {
+    return github.getOctokit(getGithubToken(env))
 }
 
 function getRelativePathFromWorkspace(env: GradleEnv, file: string): string {

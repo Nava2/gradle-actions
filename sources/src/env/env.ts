@@ -6,6 +6,22 @@ export interface GradleEnvStateImplementation {
     set(key: string, value: string): void
 
     getInput(key: string, options?: GradleEnvInputOptions): string
+
+    /**
+     * Gets the values of an multiline input.  Each value is also trimmed.
+     *
+     * @param     name     name of the input to get
+     * @param     options  optional. See InputOptions.
+     * @returns   string[]
+     */
+    getMultilineInput(name: string, options?: GradleEnvInputOptions): string[]
+
+    /**
+     * Sets env variable for this action and future actions in the job
+     * @param name the name of the variable to set
+     * @param val the value of the variable.
+     */
+    exportVariable(name: string, val: string): void
 }
 
 export interface GradleEnvInputOptions {
@@ -36,6 +52,10 @@ export class GradleEnvState {
         return this.impl.getInput(key, options)
     }
 
+    getMultilineInput(name: string, options?: GradleEnvInputOptions): string[] {
+        return this.impl.getMultilineInput(name, options)
+    }
+
     getOptionalInput(paramName: string): string | undefined {
         const paramValue = this.getInput(paramName)
         if (paramValue.length > 0) {
@@ -63,6 +83,15 @@ export class GradleEnvState {
             return undefined
         }
         return this.getBooleanInput(paramName)
+    }
+
+    /**
+     * Sets env variable for this action and future actions in the job
+     * @param name the name of the variable to set
+     * @param val the value of the variable.
+     */
+    exportVariable(name: string, val: string): void {
+        return this.impl.exportVariable(name, val)
     }
 }
 
@@ -108,19 +137,15 @@ export interface GradleContext {
 export interface GradleEnvImplementation {
     readonly log: GradleEnvLogger
 
+    /**
+     * Access to saving state within the environment.
+     */
     readonly state: GradleEnvStateImplementation
 
     /**
      * True if the current execution is in debug mode.
      */
     isDebug(): boolean
-
-    /**
-     * Sets env variable for this action and future actions in the job
-     * @param name the name of the variable to set
-     * @param val the value of the variable.
-     */
-    exportVariable(name: string, val: string): void
 }
 
 export class GradleEnv {
@@ -148,15 +173,6 @@ export class GradleEnv {
         }
 
         return process.env['GRADLE_BUILD_ACTION_CACHE_DEBUG_ENABLED'] ? true : false
-    }
-
-    /**
-     * Sets env variable for this action and future actions in the job
-     * @param name the name of the variable to set
-     * @param val the value of the variable.
-     */
-    exportVariable(name: string, val: string): void {
-        return this.impl.exportVariable(name, val)
     }
 
     cacheDebug(message: string): void {

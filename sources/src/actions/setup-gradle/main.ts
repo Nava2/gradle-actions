@@ -17,7 +17,7 @@ export async function run(): Promise<void> {
             )
         }
 
-        setActionId('gradle/actions/setup-gradle')
+        setActionId(githubActionGradleEnv, 'gradle/actions/setup-gradle')
 
         const dependencies = setupDependencies(githubActionGradleEnv)
         const {

@@ -12,7 +12,7 @@ import {CacheConfig} from '../env/configuration'
 import {BuildResults} from '../build-results'
 import {CacheKeyGenerator} from './cache-key'
 import {RemoteCacheAccessor} from './cache-utils'
-import {GradleEnv, GradleEnvLogger} from '../env/env'
+import {GradleEnv, GradleEnvLogger, GradleEnvState} from '../env/env'
 
 const CACHE_RESTORED_VAR = 'GRADLE_BUILD_ACTION_CACHE_RESTORED'
 
@@ -70,6 +70,7 @@ export class CacheContent {
     private readonly userHome: string
     private readonly gradleUserHome: string
     private readonly env: GradleEnv
+    private readonly state: GradleEnvState
     private readonly log: GradleEnvLogger
 
     constructor({
@@ -96,6 +97,7 @@ export class CacheContent {
         this.cacheKeyGenerator = cacheKeyGenerator
         this.cacheCleaner = cacheCleaner
         this.env = env
+        this.state = env.state
         this.log = env.log
     }
 
@@ -105,7 +107,7 @@ export class CacheContent {
             this.log.info('Cache only restored on first action step.')
             return
         }
-        this.env.exportVariable(CACHE_RESTORED_VAR, true.toString())
+        this.state.exportVariable(CACHE_RESTORED_VAR, true.toString())
 
         const gradleStateCache = this.createGradleHomeCache()
 
@@ -130,7 +132,7 @@ export class CacheContent {
 
         gradleStateCache.init()
         // Mark the state as restored so that post-action will perform save.
-        this.env.state.set(CACHE_RESTORED_VAR, true.toString())
+        this.state.set(CACHE_RESTORED_VAR, true.toString())
 
         if (this.cacheConfig.isCacheCleanupEnabled()) {
             this.log.info('Preparing cache for cleanup.')
@@ -158,7 +160,7 @@ export class CacheContent {
             return
         }
 
-        if (!this.env.state.get(CACHE_RESTORED_VAR)) {
+        if (!this.state.get(CACHE_RESTORED_VAR)) {
             this.log.info('Cache will not be saved: not restored in main action step.')
             return
         }

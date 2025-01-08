@@ -1,4 +1,3 @@
-import * as core from '@actions/core'
 import * as gradle from '../../execution/gradle'
 import * as dependencyGraph from '../../dependency-graph'
 
@@ -15,7 +14,7 @@ import {githubActionGradleEnv} from '../github-env'
  */
 export async function run(): Promise<void> {
     try {
-        setActionId('gradle/actions/dependency-submission')
+        setActionId(githubActionGradleEnv, 'gradle/actions/dependency-submission')
 
         const dependencies = setupDependencies(githubActionGradleEnv)
         const {
@@ -68,7 +67,7 @@ export async function run(): Promise<void> {
         await dependencyGraph.complete(dependencyGraphConfig)
 
         // Reset the enabled state of dependency graph
-        core.exportVariable('GITHUB_DEPENDENCY_GRAPH_ENABLED', originallyEnabled)
+        githubActionGradleEnv.state.exportVariable('GITHUB_DEPENDENCY_GRAPH_ENABLED', JSON.stringify(originallyEnabled))
 
         saveDeprecationState()
     } catch (error) {

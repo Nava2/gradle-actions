@@ -1,4 +1,3 @@
-import * as core from '@actions/core'
 import * as exec from '@actions/exec'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -12,7 +11,7 @@ import {DaemonController} from './daemon-controller'
 import {BuildScanConfig, SummaryConfig, WrapperValidationConfig} from './env/configuration'
 import * as wrapperValidator from './wrapper-validation/wrapper-validator'
 import {CacheContentFactory} from './caching/caches'
-import {GradleEnv, GradleEnvLogger} from './env/env'
+import {GradleEnv, GradleEnvLogger, GradleEnvState} from './env/env'
 import {Dependencies} from './inject-dependencies'
 
 const GRADLE_SETUP_VAR = 'GRADLE_BUILD_ACTION_SETUP_COMPLETED'
@@ -26,6 +25,7 @@ const CACHE_LISTENER = 'CACHE_LISTENER'
 export class SetupGradleAction {
     private readonly env: GradleEnv
     private readonly log: GradleEnvLogger
+    private readonly state: GradleEnvState
     private readonly buildScanConfig: BuildScanConfig
     private readonly wrapperValidationConfig: WrapperValidationConfig
     private readonly summaryConfig: SummaryConfig
@@ -41,6 +41,7 @@ export class SetupGradleAction {
     ) {
         this.env = env
         this.log = env.log
+        this.state = env.state
         this.buildScanConfig = buildScanConfig
         this.wrapperValidationConfig = wrapperValidationConfig
         this.summaryConfig = summaryConfig
@@ -67,13 +68,13 @@ export class SetupGradleAction {
             return false
         }
         // Record setup complete: visible to all subsequent actions and prevents duplicate setup
-        core.exportVariable(GRADLE_SETUP_VAR, true)
+        this.state.exportVariable(GRADLE_SETUP_VAR, true.toString())
         // Record setup complete: visible in post-action, to control action completion
-        core.saveState(GRADLE_SETUP_VAR, true)
+        this.state.set(GRADLE_SETUP_VAR, true.toString())
 
         // Save the User Home and Gradle User Home for use in the post-action step.
-        core.saveState(USER_HOME, userHome)
-        core.saveState(GRADLE_USER_HOME, gradleUserHome)
+        this.state.set(USER_HOME, userHome)
+        this.state.set(GRADLE_USER_HOME, gradleUserHome)
 
         const cacheContent = this.cacheContentFactory.create({
             userHome,
@@ -83,7 +84,7 @@ export class SetupGradleAction {
         const cacheListener = new CacheListener()
         await cacheContent.restore(cacheListener)
 
-        core.saveState(CACHE_LISTENER, cacheListener.stringify())
+        this.state.set(CACHE_LISTENER, cacheListener.stringify())
 
         await wrapperValidator.validateWrappers(
             this.wrapperValidationConfig,
@@ -97,7 +98,7 @@ export class SetupGradleAction {
     }
 
     async complete(): Promise<boolean> {
-        if (!core.getState(GRADLE_SETUP_VAR)) {
+        if (!this.state.get(GRADLE_SETUP_VAR)) {
             this.log.info('Gradle setup post-action only performed for first gradle/actions step in workflow.')
             return false
         }
@@ -105,9 +106,9 @@ export class SetupGradleAction {
 
         const buildResults = loadBuildResults()
 
-        const userHome = core.getState(USER_HOME)
-        const gradleUserHome = core.getState(GRADLE_USER_HOME)
-        const cacheListener = CacheListener.rehydrate(core.getState(CACHE_LISTENER))
+        const userHome = this.state.get(USER_HOME)
+        const gradleUserHome = this.state.get(GRADLE_USER_HOME)
+        const cacheListener = CacheListener.rehydrate(this.state.get(CACHE_LISTENER))
 
         const daemonController = new DaemonController(buildResults)
 
@@ -139,7 +140,7 @@ export class SetupGradleAction {
         // Use the default Gradle User Home if it already exists
         if (fs.existsSync(defaultGradleUserHome)) {
             this.log.info(`Gradle User Home already exists at ${defaultGradleUserHome}`)
-            core.exportVariable('GRADLE_USER_HOME', defaultGradleUserHome)
+            this.state.exportVariable('GRADLE_USER_HOME', defaultGradleUserHome)
             return defaultGradleUserHome
         }
 
@@ -147,11 +148,11 @@ export class SetupGradleAction {
         if (os.platform() === 'win32' && defaultGradleUserHome.startsWith('C:\\') && fs.existsSync('D:\\a\\')) {
             const fasterGradleUserHome = 'D:\\a\\.gradle'
             this.log.info(`Setting GRADLE_USER_HOME to ${fasterGradleUserHome} to leverage (potentially) faster drive.`)
-            core.exportVariable('GRADLE_USER_HOME', fasterGradleUserHome)
+            this.state.exportVariable('GRADLE_USER_HOME', fasterGradleUserHome)
             return fasterGradleUserHome
         }
 
-        core.exportVariable('GRADLE_USER_HOME', defaultGradleUserHome)
+        this.state.exportVariable('GRADLE_USER_HOME', defaultGradleUserHome)
         return defaultGradleUserHome
     }
 

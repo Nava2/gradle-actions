@@ -5,6 +5,7 @@ import * as validate from '../../wrapper-validation/validate'
 import {getActionId, setActionId} from '../../env/configuration'
 import {failOnUseOfRemovedFeature, emitDeprecationWarnings} from '../../deprecation-collector'
 import {handleMainActionError} from '../../errors'
+import {githubActionGradleEnv} from '../github-env'
 
 export async function run(): Promise<void> {
     try {
@@ -14,7 +15,7 @@ export async function run(): Promise<void> {
             )
         }
 
-        setActionId('gradle/actions/wrapper-validation')
+        setActionId(githubActionGradleEnv, 'gradle/actions/wrapper-validation')
 
         const result = await validate.findInvalidWrapperJars(
             path.resolve('.'),

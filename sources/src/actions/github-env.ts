@@ -13,7 +13,9 @@ class GitHubActionGradleEnv implements GradleEnvImplementation {
     readonly state: GradleEnvStateImplementation = {
         get: core.getState,
         set: core.saveState,
-        getInput: core.getInput
+        getInput: core.getInput,
+        getMultilineInput: core.getMultilineInput,
+        exportVariable: core.exportVariable
     }
 
     readonly log = {
@@ -26,10 +28,6 @@ class GitHubActionGradleEnv implements GradleEnvImplementation {
 
     isDebug(): boolean {
         return core.isDebug()
-    }
-
-    exportVariable(name: string, val: string): void {
-        core.exportVariable(name, val)
     }
 }
 

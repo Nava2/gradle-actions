@@ -59,7 +59,7 @@ async function addPRComment(env: GradleEnv, jobSummary: string): Promise<void> {
 
 ${jobSummary}`
 
-    const github_token = getGithubToken()
+    const github_token = getGithubToken(env)
     const octokit = github.getOctokit(github_token)
     try {
         await octokit.rest.issues.createComment({
