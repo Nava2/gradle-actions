@@ -9,9 +9,10 @@ import * as buildScan from './develocity/build-scan'
 import {loadBuildResults, markBuildResultsProcessed} from './build-results'
 import {CacheListener, generateCachingReport} from './caching/cache-reporting'
 import {DaemonController} from './daemon-controller'
-import {BuildScanConfig, getWorkspaceDirectory, SummaryConfig, WrapperValidationConfig} from './env/configuration'
+import {BuildScanConfig, SummaryConfig, WrapperValidationConfig} from './env/configuration'
 import * as wrapperValidator from './wrapper-validation/wrapper-validator'
 import {CacheContentFactory} from './caching/caches'
+import {GradleEnv, GradleEnvLogger} from './env/env'
 import {Dependencies} from './inject-dependencies'
 
 const GRADLE_SETUP_VAR = 'GRADLE_BUILD_ACTION_SETUP_COMPLETED'
@@ -23,6 +24,8 @@ const CACHE_LISTENER = 'CACHE_LISTENER'
  * Sets up Gradle in the environment to execute a build.
  */
 export class SetupGradleAction {
+    private readonly env: GradleEnv
+    private readonly log: GradleEnvLogger
     private readonly buildScanConfig: BuildScanConfig
     private readonly wrapperValidationConfig: WrapperValidationConfig
     private readonly summaryConfig: SummaryConfig
@@ -30,11 +33,14 @@ export class SetupGradleAction {
     private readonly cacheContentFactory: CacheContentFactory
 
     constructor(
+        env: GradleEnv,
         buildScanConfig: BuildScanConfig,
         wrapperValidationConfig: WrapperValidationConfig,
         summaryConfig: SummaryConfig,
         cacheContentFactory: CacheContentFactory
     ) {
+        this.env = env
+        this.log = env.log
         this.buildScanConfig = buildScanConfig
         this.wrapperValidationConfig = wrapperValidationConfig
         this.summaryConfig = summaryConfig
@@ -43,6 +49,7 @@ export class SetupGradleAction {
 
     static create(dependencies: Dependencies): SetupGradleAction {
         return new SetupGradleAction(
+            dependencies.env,
             dependencies.config.buildScanConfig,
             dependencies.config.wrapperValidationConfig,
             dependencies.config.summaryConfig,
@@ -56,7 +63,7 @@ export class SetupGradleAction {
 
         // Bypass setup on all but first action step in workflow.
         if (process.env[GRADLE_SETUP_VAR]) {
-            core.info('Gradle setup only performed on first gradle/actions step in workflow.')
+            this.log.info('Gradle setup only performed on first gradle/actions step in workflow.')
             return false
         }
         // Record setup complete: visible to all subsequent actions and prevents duplicate setup
@@ -78,7 +85,11 @@ export class SetupGradleAction {
 
         core.saveState(CACHE_LISTENER, cacheListener.stringify())
 
-        await wrapperValidator.validateWrappers(this.wrapperValidationConfig, getWorkspaceDirectory(), gradleUserHome)
+        await wrapperValidator.validateWrappers(
+            this.wrapperValidationConfig,
+            this.env.context.workspaceDirectory,
+            gradleUserHome
+        )
 
         await buildScan.setup(this.buildScanConfig)
 
@@ -87,10 +98,10 @@ export class SetupGradleAction {
 
     async complete(): Promise<boolean> {
         if (!core.getState(GRADLE_SETUP_VAR)) {
-            core.info('Gradle setup post-action only performed for first gradle/actions step in workflow.')
+            this.log.info('Gradle setup post-action only performed for first gradle/actions step in workflow.')
             return false
         }
-        core.info('In post-action step')
+        this.log.info('In post-action step')
 
         const buildResults = loadBuildResults()
 
@@ -108,11 +119,11 @@ export class SetupGradleAction {
         await cacheContent.save(cacheListener, daemonController, buildResults)
 
         const cachingReport = generateCachingReport(cacheListener)
-        await jobSummary.generateJobSummary(buildResults, cachingReport, this.summaryConfig)
+        await jobSummary.generateJobSummary(this.env, buildResults, cachingReport, this.summaryConfig)
 
         markBuildResultsProcessed()
 
-        core.info('Completed post-action step')
+        this.log.info('Completed post-action step')
 
         return true
     }
@@ -120,14 +131,14 @@ export class SetupGradleAction {
     private async determineGradleUserHome(): Promise<string> {
         const customGradleUserHome = process.env['GRADLE_USER_HOME']
         if (customGradleUserHome) {
-            const rootDir = getWorkspaceDirectory()
+            const rootDir = this.env.context.workspaceDirectory
             return path.resolve(rootDir, customGradleUserHome)
         }
 
         const defaultGradleUserHome = path.resolve(await this.determineUserHome(), '.gradle')
         // Use the default Gradle User Home if it already exists
         if (fs.existsSync(defaultGradleUserHome)) {
-            core.info(`Gradle User Home already exists at ${defaultGradleUserHome}`)
+            this.log.info(`Gradle User Home already exists at ${defaultGradleUserHome}`)
             core.exportVariable('GRADLE_USER_HOME', defaultGradleUserHome)
             return defaultGradleUserHome
         }
@@ -135,7 +146,7 @@ export class SetupGradleAction {
         // Switch Gradle User Home to faster 'D:' drive if possible
         if (os.platform() === 'win32' && defaultGradleUserHome.startsWith('C:\\') && fs.existsSync('D:\\a\\')) {
             const fasterGradleUserHome = 'D:\\a\\.gradle'
-            core.info(`Setting GRADLE_USER_HOME to ${fasterGradleUserHome} to leverage (potentially) faster drive.`)
+            this.log.info(`Setting GRADLE_USER_HOME to ${fasterGradleUserHome} to leverage (potentially) faster drive.`)
             core.exportVariable('GRADLE_USER_HOME', fasterGradleUserHome)
             return fasterGradleUserHome
         }
@@ -153,11 +164,11 @@ export class SetupGradleAction {
         const regex = /user\.home = (\S*)/i
         const found = output.stderr.match(regex)
         if (found == null || found.length <= 1) {
-            core.info('Could not determine user.home from java -version output. Using os.homedir().')
+            this.log.info('Could not determine user.home from java -version output. Using os.homedir().')
             return os.homedir()
         }
         const userHome = found[1]
-        core.debug(`Determined user.home from java -version output: '${userHome}'`)
+        this.log.debug(`Determined user.home from java -version output: '${userHome}'`)
         return userHome
     }
 }

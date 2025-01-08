@@ -1,4 +1,5 @@
 import {CacheConfig} from '../env/configuration'
+import {GradleEnv} from '../env/env'
 import {GradleExecutableExecutor} from './gradle'
 import {GradleProvisioner} from './provision'
 
@@ -8,6 +9,7 @@ export interface GradleExecutionDependencies {
 }
 
 export function setupExecutables(
+    env: GradleEnv,
     cacheConfig: CacheConfig,
     supplied?: GradleExecutionDependencies
 ): GradleExecutionDependencies {
@@ -16,6 +18,6 @@ export function setupExecutables(
     return {
         ...supplied,
         gradleExecutor,
-        gradleProvisioner: supplied?.gradleProvisioner ?? new GradleProvisioner(gradleExecutor, cacheConfig)
+        gradleProvisioner: supplied?.gradleProvisioner ?? new GradleProvisioner(env, gradleExecutor, cacheConfig)
     }
 }

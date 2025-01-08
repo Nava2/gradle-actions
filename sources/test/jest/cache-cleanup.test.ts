@@ -8,11 +8,12 @@ import { CacheCleaner } from '../../src/caching/cache-cleaner'
 import { GradleProvisioner } from '../../src/execution/provision'
 import { GradleExecutableExecutor } from '../../src/execution/gradle'
 import { CacheConfig } from '../../src/env/configuration'
+import { githubActionGradleEnv } from '../../src/actions/github-env'
 
 jest.setTimeout(120000)
 
-const gradleProvisioner = new GradleProvisioner(new GradleExecutableExecutor(), new CacheConfig(githubActionGradleEnv))
-const cacheCleaner = new CacheCleaner(gradleProvisioner)
+const gradleProvisioner = new GradleProvisioner(githubActionGradleEnv, new GradleExecutableExecutor(), new CacheConfig(githubActionGradleEnv))
+const cacheCleaner = new CacheCleaner(githubActionGradleEnv, gradleProvisioner)
 
 test('will cleanup unused dependency jars and build-cache entries', async () => {
     const projectRoot = prepareTestProject()

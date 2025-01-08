@@ -5,12 +5,19 @@ import * as deprecator from '../deprecation-collector'
 import {SUMMARY_ENV_VAR} from '@actions/core/lib/summary'
 
 import path from 'path'
+import {GradleEnv} from './env'
 
 const ACTION_ID_VAR = 'GRADLE_ACTION_ID'
 
 export const ACTION_METADATA_DIR = '.setup-gradle'
 
 export class DependencyGraphConfig {
+    private readonly env: GradleEnv
+
+    constructor(env: GradleEnv) {
+        this.env = env
+    }
+
     getDependencyGraphOption(): DependencyGraphOption {
         const val = core.getInput('dependency-graph')
         switch (val.toLowerCase().trim()) {
@@ -101,6 +108,12 @@ export enum DependencyGraphOption {
 }
 
 export class CacheConfig {
+    private readonly env: GradleEnv
+
+    constructor(env: GradleEnv) {
+        this.env = env
+    }
+
     isCacheDisabled(): boolean {
         if (!cache.isFeatureAvailable()) {
             return true
@@ -187,6 +200,12 @@ export enum CacheCleanupOption {
 }
 
 export class SummaryConfig {
+    private readonly env: GradleEnv
+
+    constructor(env: GradleEnv) {
+        this.env = env
+    }
+
     shouldGenerateJobSummary(hasFailure: boolean): boolean {
         // Check if Job Summary is supported on this platform
         if (!process.env[SUMMARY_ENV_VAR]) {
@@ -242,6 +261,12 @@ export enum JobSummaryOption {
 }
 
 export class BuildScanConfig {
+    private readonly env: GradleEnv
+
+    constructor(env: GradleEnv) {
+        this.env = env
+    }
+
     static DevelocityAccessKeyEnvVar = 'DEVELOCITY_ACCESS_KEY'
     static GradleEnterpriseAccessKeyEnvVar = 'GRADLE_ENTERPRISE_ACCESS_KEY'
 
@@ -326,12 +351,18 @@ export class BuildScanConfig {
 }
 
 export class GradleExecutionConfig {
+    private readonly env: GradleEnv
+
+    constructor(env: GradleEnv) {
+        this.env = env
+    }
+
     getGradleVersion(): string {
         return core.getInput('gradle-version')
     }
 
     getBuildRootDirectory(): string {
-        const baseDirectory = getWorkspaceDirectory()
+        const baseDirectory = this.env.context.workspaceDirectory
         const buildRootDirectoryInput = core.getInput('build-root-directory')
         const resolvedBuildRootDirectory =
             buildRootDirectoryInput === ''
@@ -439,14 +470,14 @@ export interface ConfigurationDependencies {
     readonly gradleExecutionConfig: GradleExecutionConfig
 }
 
-export function setupConfigurations(supplied?: ConfigurationDependencies): ConfigurationDependencies {
+export function setupConfigurations(env: GradleEnv, supplied?: ConfigurationDependencies): ConfigurationDependencies {
     return {
         ...supplied,
-        cacheConfig: new CacheConfig(),
-        buildScanConfig: new BuildScanConfig(),
+        cacheConfig: new CacheConfig(env),
+        buildScanConfig: new BuildScanConfig(env),
         wrapperValidationConfig: new WrapperValidationConfig(),
-        summaryConfig: new SummaryConfig(),
-        dependencyGraphConfig: new DependencyGraphConfig(),
-        gradleExecutionConfig: new GradleExecutionConfig()
+        summaryConfig: new SummaryConfig(env),
+        dependencyGraphConfig: new DependencyGraphConfig(env),
+        gradleExecutionConfig: new GradleExecutionConfig(env)
     }
 }

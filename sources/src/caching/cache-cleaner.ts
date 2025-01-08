@@ -4,11 +4,14 @@ import * as exec from '@actions/exec'
 import fs from 'fs'
 import path from 'path'
 import {GradleProvisioner} from '../execution/provision'
+import {GradleEnv} from '../env/env'
 
 export class CacheCleaner {
+    private readonly env: GradleEnv
     private readonly gradleProvisioner: GradleProvisioner
 
-    constructor(gradleProvisioner: GradleProvisioner) {
+    constructor(env: GradleEnv, gradleProvisioner: GradleProvisioner) {
+        this.env = env
         this.gradleProvisioner = gradleProvisioner
     }
 
@@ -65,7 +68,7 @@ export class CacheCleaner {
         const executable = await this.gradleProvisioner.provisionGradleAtLeast('8.12')
 
         await core.group('Executing Gradle to clean up caches', async () => {
-            core.info(`Cleaning up caches last used before ${cleanTimestamp}`)
+            this.env.log.info(`Cleaning up caches last used before ${cleanTimestamp}`)
             await this.executeCleanupBuild({gradleUserHome, executable, cleanupProjectDir})
         })
     }

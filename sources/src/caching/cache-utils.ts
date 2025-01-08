@@ -7,6 +7,7 @@ import * as path from 'path'
 import * as fs from 'fs'
 
 import {CacheEntryListener} from './cache-reporting'
+import {GradleEnv} from '../env/env'
 
 const SEGMENT_DOWNLOAD_TIMEOUT_VAR = 'SEGMENT_DOWNLOAD_TIMEOUT_MINS'
 const SEGMENT_DOWNLOAD_TIMEOUT_DEFAULT = 10 * 60 * 1000 // 10 minutes
@@ -34,6 +35,12 @@ export function hashStrings(values: string[]): string {
  * Provides access to a remote cache (e.g. Github Actions cache)
  */
 export class RemoteCacheAccessor {
+    private readonly env: GradleEnv
+
+    constructor(env: GradleEnv) {
+        this.env = env
+    }
+
     async restoreCache(
         cachePath: string[],
         cacheKey: string,
@@ -51,12 +58,14 @@ export class RemoteCacheAccessor {
             if (restoredEntry !== undefined) {
                 const restoreTime = Date.now() - startTime
                 listener.markRestored(restoredEntry.key, restoredEntry.size, restoreTime)
-                core.info(`Restored cache entry with key ${cacheKey} to ${cachePath.join()} in ${restoreTime}ms`)
+                this.env.log.info(
+                    `Restored cache entry with key ${cacheKey} to ${cachePath.join()} in ${restoreTime}ms`
+                )
             }
             return restoredEntry
         } catch (error) {
             listener.markNotRestored((error as Error).message)
-            handleCacheFailure(error, `Failed to restore ${cacheKey}`)
+            handleCacheFailure(this.env, error, `Failed to restore ${cacheKey}`)
             return undefined
         }
     }
@@ -67,14 +76,18 @@ export class RemoteCacheAccessor {
             const savedEntry = await cache.saveCache(cachePath, cacheKey)
             const saveTime = Date.now() - startTime
             listener.markSaved(savedEntry.key, savedEntry.size, saveTime)
-            core.info(`Saved cache entry with key ${cacheKey} from ${cachePath.join()} in ${saveTime}ms`)
+            this.env.log.info(`Saved cache entry with key ${cacheKey} from ${cachePath.join()} in ${saveTime}ms`)
         } catch (error) {
             if (error instanceof cache.ReserveCacheError) {
                 listener.markAlreadyExists(cacheKey)
             } else {
                 listener.markNotSaved((error as Error).message)
             }
-            handleCacheFailure(error, `Failed to save cache entry with path '${cachePath}' and key: ${cacheKey}`)
+            handleCacheFailure(
+                this.env,
+                error,
+                `Failed to save cache entry with path '${cachePath}' and key: ${cacheKey}`
+            )
         }
     }
 }
@@ -87,19 +100,19 @@ export function cacheDebug(message: string): void {
     }
 }
 
-export function handleCacheFailure(error: unknown, message: string): void {
+export function handleCacheFailure(env: GradleEnv, error: unknown, message: string): void {
     if (error instanceof cache.ValidationError) {
         // Fail on cache validation errors
         throw error
     }
     if (error instanceof cache.ReserveCacheError) {
         // Reserve cache errors are expected if the artifact has been previously cached
-        core.info(`${message}: ${error}`)
+        env.log.info(`${message}: ${error}`)
     } else {
         // Warn on all other errors
-        core.warning(`${message}: ${error}`)
+        env.log.warning(`${message}: ${error}`)
         if (error instanceof Error && error.stack) {
-            cacheDebug(error.stack)
+            env.cacheDebug(error.stack)
         }
     }
 }
@@ -107,7 +120,7 @@ export function handleCacheFailure(error: unknown, message: string): void {
 /**
  * Attempt to delete a file or directory, waiting to allow locks to be released
  */
-export async function tryDelete(file: string): Promise<void> {
+export async function tryDelete(env: GradleEnv, file: string): Promise<void> {
     const maxAttempts = 5
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         if (!fs.existsSync(file)) {
@@ -123,12 +136,12 @@ export async function tryDelete(file: string): Promise<void> {
             return
         } catch (error) {
             if (attempt === maxAttempts) {
-                core.warning(`Failed to delete ${file}, which will impact caching. 
+                env.log.warning(`Failed to delete ${file}, which will impact caching. 
 It is likely locked by another process. Output of 'jps -ml':
 ${await getJavaProcesses()}`)
                 throw error
             } else {
-                cacheDebug(`Attempt to delete ${file} failed. Will try again.`)
+                env.cacheDebug(`Attempt to delete ${file} failed. Will try again.`)
                 await delay(1000)
             }
         }

@@ -10,14 +10,17 @@ import {GradleExecutableExecutor, versionIsAtLeast} from './gradle'
 import * as gradlew from './gradlew'
 import {handleCacheFailure} from '../caching/cache-utils'
 import {CacheConfig} from '../env/configuration'
+import {GradleEnv} from '../env/env'
 
 const gradleVersionsBaseUrl = 'https://services.gradle.org/versions'
 
 export class GradleProvisioner {
+    private readonly env: GradleEnv
     private readonly gradleExecutor: GradleExecutableExecutor
     private readonly cacheConfig: CacheConfig
 
-    constructor(gradleExecutor: GradleExecutableExecutor, cacheConfig: CacheConfig) {
+    constructor(env: GradleEnv, gradleExecutor: GradleExecutableExecutor, cacheConfig: CacheConfig) {
+        this.env = env
         this.gradleExecutor = gradleExecutor
         this.cacheConfig = cacheConfig
     }
@@ -175,7 +178,7 @@ export class GradleProvisioner {
                 return downloadPath
             }
         } catch (error) {
-            handleCacheFailure(error, `Restore Gradle distribution ${versionInfo.version} failed`)
+            handleCacheFailure(this.env, error, `Restore Gradle distribution ${versionInfo.version} failed`)
         }
 
         core.info(`Gradle distribution ${versionInfo.version} not found in cache. Will download.`)
@@ -185,7 +188,7 @@ export class GradleProvisioner {
             try {
                 await cache.saveCache([downloadPath], cacheKey)
             } catch (error) {
-                handleCacheFailure(error, `Save Gradle distribution ${versionInfo.version} failed`)
+                handleCacheFailure(this.env, error, `Save Gradle distribution ${versionInfo.version} failed`)
             }
         }
         return downloadPath

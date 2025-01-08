@@ -8,6 +8,7 @@ import {saveDeprecationState} from '../../deprecation-collector'
 import {handleMainActionError} from '../../errors'
 import {SetupGradleAction} from '../../setup-gradle'
 import {setupDependencies} from '../../inject'
+import {githubActionGradleEnv} from '../github-env'
 
 /**
  * The main entry point for the action, called by Github Actions for the step.
@@ -16,7 +17,7 @@ export async function run(): Promise<void> {
     try {
         setActionId('gradle/actions/dependency-submission')
 
-        const dependencies = setupDependencies()
+        const dependencies = setupDependencies(githubActionGradleEnv)
         const {
             execution: {gradleExecutor, gradleProvisioner},
             config: {gradleExecutionConfig: executionConfig, dependencyGraphConfig}

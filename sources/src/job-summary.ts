@@ -5,8 +5,10 @@ import {RequestError} from '@octokit/request-error'
 import {BuildResults, BuildResult} from './build-results'
 import {SummaryConfig, getActionId, getGithubToken} from './env/configuration'
 import {Deprecation, getDeprecations, getErrors} from './deprecation-collector'
+import {GradleEnv} from './env/env'
 
 export async function generateJobSummary(
+    env: GradleEnv,
     buildResults: BuildResults,
     cachingReport: string,
     config: SummaryConfig
@@ -36,11 +38,11 @@ export async function generateJobSummary(
     }
 
     if (config.shouldAddPRComment(hasFailure)) {
-        await addPRComment(summaryTable)
+        await addPRComment(env, summaryTable)
     }
 }
 
-async function addPRComment(jobSummary: string): Promise<void> {
+async function addPRComment(env: GradleEnv, jobSummary: string): Promise<void> {
     const context = github.context
     if (context.payload.pull_request == null) {
         core.info('No pull_request trigger detected: not adding PR comment')

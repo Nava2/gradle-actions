@@ -1,5 +1,6 @@
 import {CacheDependencies} from './caching/inject'
 import {ConfigurationDependencies} from './env/configuration'
+import {GradleEnv} from './env/env'
 import {GradleExecutionDependencies} from './execution/inject'
 
 /**
@@ -7,6 +8,8 @@ import {GradleExecutionDependencies} from './execution/inject'
  */
 
 export interface Dependencies {
+    readonly env: GradleEnv
+
     readonly config: ConfigurationDependencies
     readonly execution: GradleExecutionDependencies
     readonly cache: CacheDependencies
