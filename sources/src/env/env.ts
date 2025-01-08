@@ -1,4 +1,5 @@
 import {GradleEnvCache} from './cache'
+import {GradleGlob} from './glob'
 
 /**
  * Provides read/write access to saving state within the environment.
@@ -196,6 +197,8 @@ export interface GradleEnvImplementation {
 
     readonly cache: GradleEnvCache
 
+    readonly glob: GradleGlob
+
     /**
      * True if the current execution is in debug mode.
      */
@@ -221,6 +224,8 @@ export class GradleEnv {
 
     readonly cache: GradleEnvCache
 
+    readonly glob: GradleGlob
+
     constructor(context: GradleContext, impl: GradleEnvImplementation) {
         this.impl = impl
         this.state = new GradleEnvState(impl.state)
@@ -228,6 +233,7 @@ export class GradleEnv {
         this.log = impl.log
         this.context = context
         this.cache = impl.cache
+        this.glob = impl.glob
     }
 
     isDebug(): boolean {

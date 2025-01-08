@@ -1,4 +1,3 @@
-import * as glob from '@actions/glob'
 import path from 'path'
 import fs from 'fs'
 import {CacheKeyGenerator} from './cache-key'
@@ -169,7 +168,7 @@ export class GradleUserHomeCache {
 
         for (const p of resolvedPaths) {
             this.env.cacheDebug(`Removing excluded path: ${p}`)
-            const globber = await glob.create(p, {
+            const globber = await this.env.glob.create(p, {
                 implicitDescendants: false
             })
 

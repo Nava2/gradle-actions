@@ -9,7 +9,9 @@ import * as core from '@actions/core'
 import * as cache from '@actions/cache'
 import * as exec from '@actions/exec'
 import * as github from '@actions/github'
+import * as glob from '@actions/glob'
 import {CacheEntryAlreadyExistsError, CacheValidationError, GradleEnvCache, GradleEnvCacheEntry} from '../env/cache'
+import {GradleGlob} from '../env/glob'
 
 const githubContext: GradleContext = {
     workflowIdentifier: github.context.workflow,
@@ -65,6 +67,11 @@ class GitHubActionGradleEnv implements GradleEnvImplementation {
             }
         },
         restoreCache: cache.restoreCache
+    }
+
+    readonly glob: GradleGlob = {
+        hashFiles: glob.hashFiles,
+        create: glob.create
     }
 
     isDebug(): boolean {
