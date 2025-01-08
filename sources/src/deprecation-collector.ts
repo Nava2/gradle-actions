@@ -1,5 +1,5 @@
 import * as core from '@actions/core'
-import {getActionId} from './configuration'
+import {getActionId} from './env/configuration'
 
 const DEPRECATION_UPGRADE_PAGE = 'https://github.com/gradle/actions/blob/main/docs/deprecation-upgrade-guide.md'
 const recordedDeprecations: Deprecation[] = []

@@ -1,4 +1,5 @@
 import {handlePostActionError} from '../../errors'
+import {setupDependencies} from '../../inject'
 import {SetupGradleAction} from '../../setup-gradle'
 
 // Catch and log any unhandled exceptions.  These exceptions can leak out of the uploadChunk method in
@@ -11,7 +12,10 @@ process.on('uncaughtException', e => handlePostActionError(e))
  */
 export async function run(): Promise<void> {
     try {
-        await SetupGradleAction.create().complete()
+        const dependencies = setupDependencies()
+
+        // Configure Gradle environment (Gradle User Home)
+        await SetupGradleAction.create(dependencies).complete()
     } catch (error) {
         handlePostActionError(error)
     }

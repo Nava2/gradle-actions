@@ -7,9 +7,9 @@ import fs from 'fs'
 import {CacheKeyGenerator} from './cache-key'
 import {CacheListener} from './cache-reporting'
 import {cacheDebug, isCacheDebuggingEnabled, RemoteCacheAccessor, tryDelete} from './cache-utils'
-import {CacheConfig, ACTION_METADATA_DIR} from '../configuration'
 import {GradleHomeEntryExtractor, ConfigurationCacheEntryExtractor, EntryExtractor} from './gradle-home-extry-extractor'
 import {getPredefinedToolchains, mergeToolchainContent, readResourceFileAsString} from './gradle-user-home-utils'
+import {ACTION_METADATA_DIR, CacheConfig} from '../env/configuration'
 
 const RESTORED_CACHE_KEY_KEY = 'restored-cache-key'
 

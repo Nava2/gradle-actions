@@ -1,6 +1,6 @@
 import * as httpm from 'typed-rest-client/HttpClient'
 import * as core from '@actions/core'
-import {BuildScanConfig} from '../configuration'
+import {BuildScanConfig} from '../env/configuration'
 import {recordDeprecation} from '../deprecation-collector'
 
 export async function setupToken(develocityAccessKey: string, develocityTokenExpiry: string): Promise<void> {

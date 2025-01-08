@@ -1,7 +1,7 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
 import * as cache from '@actions/cache'
-import * as deprecator from './deprecation-collector'
+import * as deprecator from '../deprecation-collector'
 import {SUMMARY_ENV_VAR} from '@actions/core/lib/summary'
 
 import path from 'path'
@@ -428,4 +428,25 @@ function getOptionalBooleanInput(paramName: string): boolean | undefined {
         return undefined
     }
     return getBooleanInput(paramName)
+}
+
+export interface ConfigurationDependencies {
+    readonly cacheConfig: CacheConfig
+    readonly buildScanConfig: BuildScanConfig
+    readonly wrapperValidationConfig: WrapperValidationConfig
+    readonly summaryConfig: SummaryConfig
+    readonly dependencyGraphConfig: DependencyGraphConfig
+    readonly gradleExecutionConfig: GradleExecutionConfig
+}
+
+export function setupConfigurations(supplied?: ConfigurationDependencies): ConfigurationDependencies {
+    return {
+        ...supplied,
+        cacheConfig: new CacheConfig(),
+        buildScanConfig: new BuildScanConfig(),
+        wrapperValidationConfig: new WrapperValidationConfig(),
+        summaryConfig: new SummaryConfig(),
+        dependencyGraphConfig: new DependencyGraphConfig(),
+        gradleExecutionConfig: new GradleExecutionConfig()
+    }
 }

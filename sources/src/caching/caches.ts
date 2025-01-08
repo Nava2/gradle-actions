@@ -8,7 +8,7 @@ import {
 import {GradleUserHomeCache} from './gradle-user-home-cache'
 import {CacheCleaner} from './cache-cleaner'
 import {DaemonController} from '../daemon-controller'
-import {CacheConfig} from '../configuration'
+import {CacheConfig} from '../env/configuration'
 import {BuildResults} from '../build-results'
 import {CacheKeyGenerator} from './cache-key'
 import {RemoteCacheAccessor} from './cache-utils'

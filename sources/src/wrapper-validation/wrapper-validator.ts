@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
 
-import {WrapperValidationConfig} from '../configuration'
+import {WrapperValidationConfig} from '../env/configuration'
 import {ChecksumCache} from './cache'
 import {findInvalidWrapperJars} from './validate'
 import {JobFailure} from '../errors'
