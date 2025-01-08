@@ -1,4 +1,3 @@
-import * as core from '@actions/core'
 import {
     CacheListener,
     EXISTING_GRADLE_HOME,
@@ -145,7 +144,7 @@ export class CacheContent {
             return
         }
 
-        await core.group('Restore Gradle state from cache', async () => {
+        await this.env.exec.group('Restore Gradle state from cache', async () => {
             await gradleStateCache.restore(cacheListener)
         })
     }
@@ -171,7 +170,7 @@ export class CacheContent {
             return
         }
 
-        await core.group('Stopping Gradle daemons', async () => {
+        await this.env.exec.group('Stopping Gradle daemons', async () => {
             await daemonController.stopAllDaemons()
         })
 
@@ -188,7 +187,7 @@ export class CacheContent {
             }
         }
 
-        await core.group('Caching Gradle state', async () => {
+        await this.env.exec.group('Caching Gradle state', async () => {
             return this.createGradleHomeCache().save(cacheListener)
         })
     }

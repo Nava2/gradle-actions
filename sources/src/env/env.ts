@@ -95,6 +95,51 @@ export class GradleEnvState {
     }
 }
 
+export interface GradleEnvExecution {
+    /**
+     * Wrap an asynchronous function call in a "group" of execution in a CI pipeline.
+     * @param name Name of the group.
+     * @param fn
+     */
+    group(name: string, fn: () => Promise<void>): Promise<void>
+
+    /**
+     * Executes
+     * @param command
+     * @param args
+     */
+    run(command: string, args?: string[], options?: GradleEnvExecOptions): Promise<void>
+
+    /**
+     * Executes command and returns the output.
+     * @param command
+     * @param args
+     * @param options
+     */
+    getExecOutput(
+        command: string,
+        args?: string[],
+        options?: GradleEnvExecOptions
+    ): Promise<{stdout: string; stderr: string}>
+}
+
+/**
+ * Interface for exec options
+ */
+export interface GradleEnvExecOptions {
+    /** optional working directory.  defaults to current */
+    cwd?: string
+
+    silent?: boolean
+
+    ignoreReturnCode?: boolean
+
+    /** optional envvar dictionary.  defaults to current process's env */
+    env?: {
+        [key: string]: string
+    }
+}
+
 export interface GradleEnvLogger {
     /**
      * Log an `info` message.
@@ -143,6 +188,11 @@ export interface GradleEnvImplementation {
     readonly state: GradleEnvStateImplementation
 
     /**
+     * Execution environment access.
+     */
+    readonly exec: GradleEnvExecution
+
+    /**
      * True if the current execution is in debug mode.
      */
     isDebug(): boolean
@@ -156,6 +206,11 @@ export class GradleEnv {
      */
     readonly state: GradleEnvState
 
+    /**
+     * Execution environment access.
+     */
+    readonly exec: GradleEnvExecution
+
     readonly log: GradleEnvLogger
 
     readonly context: GradleContext
@@ -163,6 +218,7 @@ export class GradleEnv {
     constructor(context: GradleContext, impl: GradleEnvImplementation) {
         this.impl = impl
         this.state = new GradleEnvState(impl.state)
+        this.exec = impl.exec
         this.log = impl.log
         this.context = context
     }

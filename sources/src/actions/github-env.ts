@@ -1,5 +1,12 @@
-import {GradleContext, GradleEnvImplementation, GradleEnv, GradleEnvStateImplementation} from '../env/env'
+import {
+    GradleContext,
+    GradleEnvImplementation,
+    GradleEnv,
+    GradleEnvStateImplementation,
+    GradleEnvExecOptions
+} from '../env/env'
 import * as core from '@actions/core'
+import * as exec from '@actions/exec'
 import * as github from '@actions/github'
 
 const githubContext: GradleContext = {
@@ -16,6 +23,20 @@ class GitHubActionGradleEnv implements GradleEnvImplementation {
         getInput: core.getInput,
         getMultilineInput: core.getMultilineInput,
         exportVariable: core.exportVariable
+    }
+
+    readonly exec = {
+        group: core.group,
+        run: async (command: string, args?: string[], options?: GradleEnvExecOptions): Promise<void> => {
+            await exec.exec(command, args, options)
+        },
+        getExecOutput: async (
+            command: string,
+            args?: string[],
+            options?: GradleEnvExecOptions
+        ): Promise<{stdout: string; stderr: string}> => {
+            return await exec.getExecOutput(command, args, options)
+        }
     }
 
     readonly log = {

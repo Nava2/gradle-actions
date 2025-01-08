@@ -1,4 +1,3 @@
-import * as exec from '@actions/exec'
 import * as glob from '@actions/glob'
 import path from 'path'
 import fs from 'fs'
@@ -306,7 +305,7 @@ export class GradleUserHomeCache {
         if (!fs.existsSync(this.gradleUserHome)) {
             return
         }
-        const result = await exec.getExecOutput('du', ['-h', '-c', '-t', '5M'], {
+        const result = await this.env.exec.getExecOutput('du', ['-h', '-c', '-t', '5M'], {
             cwd: this.gradleUserHome,
             silent: true,
             ignoreReturnCode: true
