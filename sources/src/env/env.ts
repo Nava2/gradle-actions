@@ -1,3 +1,71 @@
+/**
+ * Provides read/write access to saving state within the environment.
+ */
+export interface GradleEnvStateImplementation {
+    get(key: string): string
+    set(key: string, value: string): void
+
+    getInput(key: string, options?: GradleEnvInputOptions): string
+}
+
+export interface GradleEnvInputOptions {
+    /**
+     * True if input is required.
+     */
+    readonly required?: boolean
+}
+
+/**
+ * Provides read/write access to saving state within the environment.
+ */
+export class GradleEnvState {
+    private readonly impl: GradleEnvStateImplementation
+
+    constructor(impl: GradleEnvStateImplementation) {
+        this.impl = impl
+    }
+
+    get(key: string): string {
+        return this.impl.get(key)
+    }
+    set(key: string, value: string): void {
+        this.impl.set(key, value)
+    }
+
+    getInput(key: string, options?: GradleEnvInputOptions): string {
+        return this.impl.getInput(key, options)
+    }
+
+    getOptionalInput(paramName: string): string | undefined {
+        const paramValue = this.getInput(paramName)
+        if (paramValue.length > 0) {
+            return paramValue
+        }
+        return undefined
+    }
+
+    getBooleanInput(paramName: string, paramDefault = false): boolean {
+        const paramValue = this.getInput(paramName)
+        switch (paramValue.toLowerCase().trim()) {
+            case '':
+                return paramDefault
+            case 'false':
+                return false
+            case 'true':
+                return true
+        }
+        throw TypeError(`The value '${paramValue} is not valid for '${paramName}. Valid values are: [true, false]`)
+    }
+
+    getOptionalBooleanInput(paramName: string): boolean | undefined {
+        const paramValue = this.getInput(paramName)
+        if (paramValue === '') {
+            return undefined
+        }
+        return this.getBooleanInput(paramName)
+    }
+}
+
 export interface GradleEnvLogger {
     /**
      * Log an `info` message.
@@ -40,14 +108,28 @@ export interface GradleContext {
 export interface GradleEnvImplementation {
     readonly log: GradleEnvLogger
 
+    readonly state: GradleEnvStateImplementation
+
     /**
      * True if the current execution is in debug mode.
      */
     isDebug(): boolean
+
+    /**
+     * Sets env variable for this action and future actions in the job
+     * @param name the name of the variable to set
+     * @param val the value of the variable.
+     */
+    exportVariable(name: string, val: string): void
 }
 
 export class GradleEnv {
     private readonly impl: GradleEnvImplementation
+
+    /**
+     * Access to saving state within the environment.
+     */
+    readonly state: GradleEnvState
 
     readonly log: GradleEnvLogger
 
@@ -55,6 +137,7 @@ export class GradleEnv {
 
     constructor(context: GradleContext, impl: GradleEnvImplementation) {
         this.impl = impl
+        this.state = new GradleEnvState(impl.state)
         this.log = impl.log
         this.context = context
     }
@@ -65,6 +148,15 @@ export class GradleEnv {
         }
 
         return process.env['GRADLE_BUILD_ACTION_CACHE_DEBUG_ENABLED'] ? true : false
+    }
+
+    /**
+     * Sets env variable for this action and future actions in the job
+     * @param name the name of the variable to set
+     * @param val the value of the variable.
+     */
+    exportVariable(name: string, val: string): void {
+        return this.impl.exportVariable(name, val)
     }
 
     cacheDebug(message: string): void {

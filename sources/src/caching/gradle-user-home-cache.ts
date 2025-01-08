@@ -1,4 +1,3 @@
-import * as core from '@actions/core'
 import * as exec from '@actions/exec'
 import * as glob from '@actions/glob'
 import path from 'path'
@@ -46,7 +45,7 @@ export class GradleUserHomeCache {
         // Export the GRADLE_ENCRYPTION_KEY variable if provided
         const encryptionKey = this.cacheConfig.getCacheEncryptionKey()
         if (encryptionKey) {
-            core.exportVariable('GRADLE_ENCRYPTION_KEY', encryptionKey)
+            this.env.exportVariable('GRADLE_ENCRYPTION_KEY', encryptionKey)
         }
     }
 
@@ -85,7 +84,7 @@ export class GradleUserHomeCache {
             return
         }
 
-        core.saveState(RESTORED_CACHE_KEY_KEY, cacheResult.key)
+        this.env.state.set(RESTORED_CACHE_KEY_KEY, cacheResult.key)
 
         try {
             await this.afterRestore(listener)
@@ -117,7 +116,7 @@ export class GradleUserHomeCache {
      */
     async save(listener: CacheListener): Promise<void> {
         const cacheKey = this.cacheKeyGenerator.generateCacheKey(this.cacheName, this.cacheConfig).key
-        const restoredCacheKey = core.getState(RESTORED_CACHE_KEY_KEY)
+        const restoredCacheKey = this.env.state.get(RESTORED_CACHE_KEY_KEY)
         const gradleHomeEntryListener = listener.entry(this.cacheDescription)
 
         if (restoredCacheKey && cacheKey === restoredCacheKey) {

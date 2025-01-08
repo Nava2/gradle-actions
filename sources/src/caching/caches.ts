@@ -105,7 +105,7 @@ export class CacheContent {
             this.log.info('Cache only restored on first action step.')
             return
         }
-        core.exportVariable(CACHE_RESTORED_VAR, true)
+        this.env.exportVariable(CACHE_RESTORED_VAR, true.toString())
 
         const gradleStateCache = this.createGradleHomeCache()
 
@@ -130,7 +130,7 @@ export class CacheContent {
 
         gradleStateCache.init()
         // Mark the state as restored so that post-action will perform save.
-        core.saveState(CACHE_RESTORED_VAR, true)
+        this.env.state.set(CACHE_RESTORED_VAR, true.toString())
 
         if (this.cacheConfig.isCacheCleanupEnabled()) {
             this.log.info('Preparing cache for cleanup.')
@@ -158,7 +158,7 @@ export class CacheContent {
             return
         }
 
-        if (!core.getState(CACHE_RESTORED_VAR)) {
+        if (!this.env.state.get(CACHE_RESTORED_VAR)) {
             this.log.info('Cache will not be saved: not restored in main action step.')
             return
         }

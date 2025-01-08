@@ -1,4 +1,4 @@
-import {GradleContext, GradleEnvImplementation, GradleEnv} from '../env/env'
+import {GradleContext, GradleEnvImplementation, GradleEnv, GradleEnvStateImplementation} from '../env/env'
 import * as core from '@actions/core'
 import * as github from '@actions/github'
 
@@ -10,6 +10,12 @@ const githubContext: GradleContext = {
 }
 
 class GitHubActionGradleEnv implements GradleEnvImplementation {
+    readonly state: GradleEnvStateImplementation = {
+        get: core.getState,
+        set: core.saveState,
+        getInput: core.getInput
+    }
+
     readonly log = {
         info: core.info,
         debug: core.debug,
@@ -20,6 +26,10 @@ class GitHubActionGradleEnv implements GradleEnvImplementation {
 
     isDebug(): boolean {
         return core.isDebug()
+    }
+
+    exportVariable(name: string, val: string): void {
+        core.exportVariable(name, val)
     }
 }
 

@@ -1,4 +1,3 @@
-import * as core from '@actions/core'
 import * as cache from '@actions/cache'
 import * as exec from '@actions/exec'
 
@@ -11,13 +10,6 @@ import {GradleEnv} from '../env/env'
 
 const SEGMENT_DOWNLOAD_TIMEOUT_VAR = 'SEGMENT_DOWNLOAD_TIMEOUT_MINS'
 const SEGMENT_DOWNLOAD_TIMEOUT_DEFAULT = 10 * 60 * 1000 // 10 minutes
-
-export function isCacheDebuggingEnabled(): boolean {
-    if (core.isDebug()) {
-        return true
-    }
-    return process.env['GRADLE_BUILD_ACTION_CACHE_DEBUG_ENABLED'] ? true : false
-}
 
 export function hashFileNames(fileNames: string[]): string {
     return hashStrings(fileNames.map(x => x.replace(new RegExp(`\\${path.sep}`, 'g'), '/')))
@@ -89,14 +81,6 @@ export class RemoteCacheAccessor {
                 `Failed to save cache entry with path '${cachePath}' and key: ${cacheKey}`
             )
         }
-    }
-}
-
-export function cacheDebug(message: string): void {
-    if (isCacheDebuggingEnabled()) {
-        core.info(message)
-    } else {
-        core.debug(message)
     }
 }
 
