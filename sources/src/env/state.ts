@@ -19,9 +19,10 @@ export interface GradleEnvStateImplementation {
      * Write a persistent value.
      *
      * @param key Property key
-     * @param value Value to store
+     * @param value Value to store, [JSON.stringify] will be called on the value if not a [string].
      */
-    save(key: string, value: string): void
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    save(key: string, value: any): void
 
     /**
      * Read an input parameter from the triggered workflow.
@@ -44,9 +45,10 @@ export interface GradleEnvStateImplementation {
      * Sets env variable for this action and future actions in the job.
      *
      * @param name the name of the variable to set
-     * @param val the value of the variable.
+     * @param val the value of the variable, [JSON.stringify] will be called on the value if not a [string].
      */
-    exportVariable(name: string, val: string): void
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    exportVariable(name: string, val: any): void
 
     /**
      * Sets the action status to failed.
@@ -81,7 +83,8 @@ class GradleEnvState implements GradleEnvStateImplementation {
         return this.impl.get(key)
     }
 
-    save(key: string, value: string): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    save(key: string, value: any): void {
         this.impl.save(key, value)
     }
 
@@ -122,7 +125,8 @@ class GradleEnvState implements GradleEnvStateImplementation {
         return this.getBooleanInput(paramName)
     }
 
-    exportVariable(name: string, val: string): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    exportVariable(name: string, val: any): void {
         return this.impl.exportVariable(name, val)
     }
 
