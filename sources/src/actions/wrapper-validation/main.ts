@@ -2,7 +2,7 @@ import * as path from 'path'
 import * as core from '@actions/core'
 
 import * as validate from '../../wrapper-validation/validate'
-import {state} from '../../env/state'
+import {state} from '../../env'
 import {getActionId, setActionId} from '../../configuration'
 import {failOnUseOfRemovedFeature, emitDeprecationWarnings} from '../../deprecation-collector'
 import {handleMainActionError} from '../../errors'

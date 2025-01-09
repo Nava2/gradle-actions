@@ -14,7 +14,7 @@ import {
 } from '../../configuration'
 import {saveDeprecationState} from '../../deprecation-collector'
 import {handleMainActionError} from '../../errors'
-import {state} from '../../env/state'
+import {state} from '../../env'
 
 import {configureGithubEnv} from '../github-actions-env'
 configureGithubEnv()

@@ -1,6 +1,7 @@
-import { state, GradleEnvStateImplementation } from '../../src/env/state'
+import { state } from '../../src/env'
+import { CIStateImplementation } from '../../src/env/state'
 
-class TestStateImplementation implements GradleEnvStateImplementation {
+class TestStateImplementation implements CIStateImplementation {
     readonly state: Record<string, string> = {}
 
     readonly inputs: Record<string, string> = {}

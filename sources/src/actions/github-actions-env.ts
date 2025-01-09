@@ -1,5 +1,5 @@
 import * as core from '@actions/core'
-import {state} from '../env/state'
+import {state} from '../env'
 
 function setupState(): void {
     state.setImpl({

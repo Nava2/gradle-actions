@@ -1,7 +1,7 @@
 /**
  * Provides read/write access to saving state within the environment.
  */
-export interface GradleEnvStateImplementation {
+export interface CIStateImplementation {
     /**
      * True if this build is being debugged.
      */
@@ -68,10 +68,10 @@ export interface GradleEnvInputOptions {
 /**
  * Provides read/write access to saving state within the environment.
  */
-class GradleEnvState implements GradleEnvStateImplementation {
-    private impl!: GradleEnvStateImplementation
+class CIState implements CIStateImplementation {
+    private impl!: CIStateImplementation
 
-    setImpl(impl: GradleEnvStateImplementation): void {
+    setImpl(impl: CIStateImplementation): void {
         this.impl = impl
     }
 
@@ -135,4 +135,4 @@ class GradleEnvState implements GradleEnvStateImplementation {
     }
 }
 
-export const state = new GradleEnvState()
+export const state = new CIState()

@@ -4,7 +4,7 @@ import * as exec from '@actions/exec'
 import fs from 'fs'
 import path from 'path'
 import * as provisioner from '../execution/provision'
-import {state} from '../env/state'
+import {state} from '../env'
 
 export class CacheCleaner {
     private readonly gradleUserHome: string
