@@ -10,6 +10,7 @@ import {saveCache, restoreCache, cacheDebug, isCacheDebuggingEnabled, tryDelete}
 import {CacheConfig, ACTION_METADATA_DIR} from '../configuration'
 import {GradleHomeEntryExtractor, ConfigurationCacheEntryExtractor} from './gradle-home-extry-extractor'
 import {getPredefinedToolchains, mergeToolchainContent, readResourceFileAsString} from './gradle-user-home-utils'
+import {state} from '../env/state'
 
 const RESTORED_CACHE_KEY_KEY = 'restored-cache-key'
 
@@ -33,7 +34,7 @@ export class GradleUserHomeCache {
         // Export the GRADLE_ENCRYPTION_KEY variable if provided
         const encryptionKey = this.cacheConfig.getCacheEncryptionKey()
         if (encryptionKey) {
-            core.exportVariable('GRADLE_ENCRYPTION_KEY', encryptionKey)
+            state.exportVariable('GRADLE_ENCRYPTION_KEY', encryptionKey)
         }
     }
 
@@ -67,7 +68,7 @@ export class GradleUserHomeCache {
             return
         }
 
-        core.saveState(RESTORED_CACHE_KEY_KEY, cacheResult.key)
+        state.save(RESTORED_CACHE_KEY_KEY, cacheResult.key)
 
         try {
             await this.afterRestore(listener)
@@ -96,7 +97,7 @@ export class GradleUserHomeCache {
      */
     async save(listener: CacheListener): Promise<void> {
         const cacheKey = generateCacheKey(this.cacheName, this.cacheConfig).key
-        const restoredCacheKey = core.getState(RESTORED_CACHE_KEY_KEY)
+        const restoredCacheKey = state.get(RESTORED_CACHE_KEY_KEY)
         const gradleHomeEntryListener = listener.entry(this.cacheDescription)
 
         if (restoredCacheKey && cacheKey === restoredCacheKey) {
@@ -191,7 +192,7 @@ export class GradleUserHomeCache {
         // Copy the default toolchain definitions to `~/.m2/toolchains.xml`
         this.registerToolchains()
 
-        if (core.isDebug()) {
+        if (state.isDebug()) {
             this.configureInfoLogLevel()
         }
     }
@@ -260,7 +261,7 @@ export class GradleUserHomeCache {
      * this method will give a detailed report of the Gradle User Home contents.
      */
     private async debugReportGradleUserHomeSize(label: string): Promise<void> {
-        if (!isCacheDebuggingEnabled() && !core.isDebug()) {
+        if (!isCacheDebuggingEnabled() && !state.isDebug()) {
             return
         }
         if (!fs.existsSync(this.gradleUserHome)) {

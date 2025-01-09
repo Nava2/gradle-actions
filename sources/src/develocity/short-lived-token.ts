@@ -2,6 +2,7 @@ import * as httpm from 'typed-rest-client/HttpClient'
 import * as core from '@actions/core'
 import {BuildScanConfig} from '../configuration'
 import {recordDeprecation} from '../deprecation-collector'
+import {state} from '../env/state'
 
 export async function setupToken(develocityAccessKey: string, develocityTokenExpiry: string): Promise<void> {
     if (develocityAccessKey) {
@@ -25,7 +26,7 @@ export async function setupToken(develocityAccessKey: string, develocityTokenExp
 
 function exportAccessKeyEnvVars(value: string): void {
     ;[BuildScanConfig.DevelocityAccessKeyEnvVar, BuildScanConfig.GradleEnterpriseAccessKeyEnvVar].forEach(key =>
-        core.exportVariable(key, value)
+        state.exportVariable(key, value)
     )
 }
 

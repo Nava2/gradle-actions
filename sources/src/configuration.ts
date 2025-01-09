@@ -3,6 +3,7 @@ import * as github from '@actions/github'
 import * as cache from '@actions/cache'
 import * as deprecator from './deprecation-collector'
 import {SUMMARY_ENV_VAR} from '@actions/core/lib/summary'
+import {state} from './env/state'
 
 import path from 'path'
 
@@ -12,7 +13,7 @@ export const ACTION_METADATA_DIR = '.setup-gradle'
 
 export class DependencyGraphConfig {
     getDependencyGraphOption(): DependencyGraphOption {
-        const val = core.getInput('dependency-graph')
+        const val = state.getInput('dependency-graph')
         switch (val.toLowerCase().trim()) {
             case 'disabled':
                 return DependencyGraphOption.Disabled
@@ -35,7 +36,7 @@ export class DependencyGraphConfig {
     }
 
     getArtifactRetentionDays(): number {
-        const val = core.getInput('artifact-retention-days')
+        const val = state.getInput('artifact-retention-days')
         return parseNumericInput('artifact-retention-days', val, 0)
         // Zero indicates that the default repository settings should be used
     }
@@ -45,7 +46,7 @@ export class DependencyGraphConfig {
     }
 
     getReportDirectory(): string {
-        const param = core.getInput('dependency-graph-report-dir')
+        const param = state.getInput('dependency-graph-report-dir')
         return path.resolve(getWorkspaceDirectory(), param)
     }
 
@@ -153,7 +154,7 @@ export class CacheConfig {
             return legacyVal ? CacheCleanupOption.Always : CacheCleanupOption.Never
         }
 
-        const val = core.getInput('cache-cleanup')
+        const val = state.getInput('cache-cleanup')
         switch (val.toLowerCase().trim()) {
             case 'always':
                 return CacheCleanupOption.Always
@@ -168,15 +169,15 @@ export class CacheConfig {
     }
 
     getCacheEncryptionKey(): string {
-        return core.getInput('cache-encryption-key')
+        return state.getInput('cache-encryption-key')
     }
 
     getCacheIncludes(): string[] {
-        return core.getMultilineInput('gradle-home-cache-includes')
+        return state.getMultilineInput('gradle-home-cache-includes')
     }
 
     getCacheExcludes(): string[] {
-        return core.getMultilineInput('gradle-home-cache-excludes')
+        return state.getMultilineInput('gradle-home-cache-excludes')
     }
 }
 
@@ -220,7 +221,7 @@ export class SummaryConfig {
     }
 
     private parseJobSummaryOption(paramName: string): JobSummaryOption {
-        const val = core.getInput(paramName)
+        const val = state.getInput(paramName)
         switch (val.toLowerCase().trim()) {
             case 'never':
                 return JobSummaryOption.Never
@@ -250,16 +251,16 @@ export class BuildScanConfig {
     }
 
     getBuildScanTermsOfUseUrl(): string {
-        return core.getInput('build-scan-terms-of-use-url')
+        return state.getInput('build-scan-terms-of-use-url')
     }
 
     getBuildScanTermsOfUseAgree(): string {
-        return core.getInput('build-scan-terms-of-use-agree')
+        return state.getInput('build-scan-terms-of-use-agree')
     }
 
     getDevelocityAccessKey(): string {
         return (
-            core.getInput('develocity-access-key') ||
+            state.getInput('develocity-access-key') ||
             process.env[BuildScanConfig.DevelocityAccessKeyEnvVar] ||
             process.env[BuildScanConfig.GradleEnterpriseAccessKeyEnvVar] ||
             ''
@@ -267,7 +268,7 @@ export class BuildScanConfig {
     }
 
     getDevelocityTokenExpiry(): string {
-        return core.getInput('develocity-token-expiry')
+        return state.getInput('develocity-token-expiry')
     }
 
     getDevelocityInjectionEnabled(): boolean | undefined {
@@ -275,7 +276,7 @@ export class BuildScanConfig {
     }
 
     getDevelocityUrl(): string {
-        return core.getInput('develocity-url')
+        return state.getInput('develocity-url')
     }
 
     getDevelocityAllowUntrustedServer(): boolean | undefined {
@@ -291,23 +292,23 @@ export class BuildScanConfig {
     }
 
     getDevelocityPluginVersion(): string {
-        return core.getInput('develocity-plugin-version')
+        return state.getInput('develocity-plugin-version')
     }
 
     getDevelocityCcudPluginVersion(): string {
-        return core.getInput('develocity-ccud-plugin-version')
+        return state.getInput('develocity-ccud-plugin-version')
     }
 
     getGradlePluginRepositoryUrl(): string {
-        return core.getInput('gradle-plugin-repository-url')
+        return state.getInput('gradle-plugin-repository-url')
     }
 
     getGradlePluginRepositoryUsername(): string {
-        return core.getInput('gradle-plugin-repository-username')
+        return state.getInput('gradle-plugin-repository-username')
     }
 
     getGradlePluginRepositoryPassword(): string {
-        return core.getInput('gradle-plugin-repository-password')
+        return state.getInput('gradle-plugin-repository-password')
     }
 
     private verifyTermsOfUseAgreement(): boolean {
@@ -327,12 +328,12 @@ export class BuildScanConfig {
 
 export class GradleExecutionConfig {
     getGradleVersion(): string {
-        return core.getInput('gradle-version')
+        return state.getInput('gradle-version')
     }
 
     getBuildRootDirectory(): string {
         const baseDirectory = getWorkspaceDirectory()
-        const buildRootDirectoryInput = core.getInput('build-root-directory')
+        const buildRootDirectoryInput = state.getInput('build-root-directory')
         const resolvedBuildRootDirectory =
             buildRootDirectoryInput === ''
                 ? path.resolve(baseDirectory)
@@ -341,15 +342,15 @@ export class GradleExecutionConfig {
     }
 
     getDependencyResolutionTask(): string {
-        return core.getInput('dependency-resolution-task') || ':ForceDependencyResolutionPlugin_resolveAllDependencies'
+        return state.getInput('dependency-resolution-task') || ':ForceDependencyResolutionPlugin_resolveAllDependencies'
     }
 
     getAdditionalArguments(): string {
-        return core.getInput('additional-arguments')
+        return state.getInput('additional-arguments')
     }
 
     verifyNoArguments(): void {
-        const input = core.getInput('arguments')
+        const input = state.getInput('arguments')
         if (input.length !== 0) {
             deprecator.failOnUseOfRemovedFeature(
                 `The 'arguments' parameter is no longer supported for ${getActionId()}`,
@@ -371,11 +372,11 @@ export class WrapperValidationConfig {
 
 // Internal parameters
 export function getJobMatrix(): string {
-    return core.getInput('workflow-job-context')
+    return state.getInput('workflow-job-context')
 }
 
 export function getGithubToken(): string {
-    return core.getInput('github-token', {required: true})
+    return state.getInput('github-token', {required: true})
 }
 
 export function getWorkspaceDirectory(): string {
@@ -387,7 +388,7 @@ export function getActionId(): string | undefined {
 }
 
 export function setActionId(id: string): void {
-    core.exportVariable(ACTION_ID_VAR, id)
+    state.exportVariable(ACTION_ID_VAR, id)
 }
 
 export function parseNumericInput(paramName: string, paramValue: string, paramDefault: number): number {
@@ -402,7 +403,7 @@ export function parseNumericInput(paramName: string, paramValue: string, paramDe
 }
 
 function getOptionalInput(paramName: string): string | undefined {
-    const paramValue = core.getInput(paramName)
+    const paramValue = state.getInput(paramName)
     if (paramValue.length > 0) {
         return paramValue
     }
@@ -410,7 +411,7 @@ function getOptionalInput(paramName: string): string | undefined {
 }
 
 function getBooleanInput(paramName: string, paramDefault = false): boolean {
-    const paramValue = core.getInput(paramName)
+    const paramValue = state.getInput(paramName)
     switch (paramValue.toLowerCase().trim()) {
         case '':
             return paramDefault
@@ -423,7 +424,7 @@ function getBooleanInput(paramName: string, paramDefault = false): boolean {
 }
 
 function getOptionalBooleanInput(paramName: string): boolean | undefined {
-    const paramValue = core.getInput(paramName)
+    const paramValue = state.getInput(paramName)
     if (paramValue === '') {
         return undefined
     }
