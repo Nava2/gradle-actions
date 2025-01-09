@@ -1,4 +1,3 @@
-import * as core from '@actions/core'
 import * as setupGradle from '../../setup-gradle'
 import * as gradle from '../../execution/gradle'
 import * as dependencyGraph from '../../dependency-graph'
@@ -15,6 +14,10 @@ import {
 } from '../../configuration'
 import {saveDeprecationState} from '../../deprecation-collector'
 import {handleMainActionError} from '../../errors'
+import {state} from '../../env/state'
+
+import {configureGithubEnv} from '../github-actions-env'
+configureGithubEnv()
 
 /**
  * The main entry point for the action, called by Github Actions for the step.
@@ -59,7 +62,7 @@ export async function run(): Promise<void> {
         await dependencyGraph.complete(config)
 
         // Reset the enabled state of dependency graph
-        core.exportVariable('GITHUB_DEPENDENCY_GRAPH_ENABLED', originallyEnabled)
+        state.exportVariable('GITHUB_DEPENDENCY_GRAPH_ENABLED', originallyEnabled ?? '')
 
         saveDeprecationState()
     } catch (error) {

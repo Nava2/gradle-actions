@@ -1,6 +1,9 @@
 import { describe } from 'node:test'
 import { versionIsAtLeast, parseGradleVersionFromOutput } from '../../src/execution/gradle'
 
+import { configureTestEnv } from './test-env'
+configureTestEnv()
+
 describe('gradle', () => {
     describe('can compare version with', () => {
         it('same version', async () => {

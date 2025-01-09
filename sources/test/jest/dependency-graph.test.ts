@@ -1,5 +1,8 @@
 import { DependencyGraphConfig } from "../../src/configuration" 
 
+import { configureTestEnv } from './test-env'
+configureTestEnv()
+
 describe('dependency-graph', () => {
     describe('constructs job correlator', () => {
         it('removes commas from workflow name', () => {

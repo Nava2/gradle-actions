@@ -2,6 +2,9 @@ import * as path from 'path'
 import * as hash from '../../../src/wrapper-validation/hash'
 import {expect, test} from '@jest/globals'
 
+import { configureTestEnv } from '../test-env'
+configureTestEnv()
+
 test('can sha256 files', async () => {
   const sha = await hash.sha256File(
     path.resolve('test/jest/wrapper-validation/data/invalid/gradle-wrapper.jar')

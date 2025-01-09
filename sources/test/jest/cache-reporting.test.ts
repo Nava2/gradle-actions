@@ -1,5 +1,7 @@
-import exp from 'constants'
 import {CacheEntryListener, CacheListener} from '../../src/caching/cache-reporting'
+
+import { configureTestEnv } from './test-env'
+configureTestEnv()
 
 describe('caching report', () => {
     describe('reports not fully restored', () => {

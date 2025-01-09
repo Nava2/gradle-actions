@@ -4,6 +4,7 @@ import * as exec from '@actions/exec'
 import fs from 'fs'
 import path from 'path'
 import * as provisioner from '../execution/provision'
+import {state} from '../env/state'
 
 export class CacheCleaner {
     private readonly gradleUserHome: string
@@ -17,12 +18,12 @@ export class CacheCleaner {
     async prepare(): Promise<string> {
         // Save the current timestamp
         const timestamp = Date.now().toString()
-        core.saveState('clean-timestamp', timestamp)
+        state.save('clean-timestamp', timestamp)
         return timestamp
     }
 
     async forceCleanup(): Promise<void> {
-        const cleanTimestamp = core.getState('clean-timestamp')
+        const cleanTimestamp = state.get('clean-timestamp')
         await this.forceCleanupFilesOlderThan(cleanTimestamp)
     }
 
