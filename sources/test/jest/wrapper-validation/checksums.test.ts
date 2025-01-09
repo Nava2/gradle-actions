@@ -2,6 +2,9 @@ import * as checksums from '../../../src/wrapper-validation/checksums'
 import nock from 'nock'
 import {afterEach, describe, expect, test, jest} from '@jest/globals'
 
+import { configureTestEnv } from '../test-env'
+configureTestEnv()
+
 jest.setTimeout(60000)
 
 const CHECKSUM_8_1 = 'ed2c26eba7cfb93cc2b7785d05e534f07b5b48b5e7fc941921cd098628abca58'

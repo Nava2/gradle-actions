@@ -2,6 +2,9 @@ import { BuildResult } from '../../src/build-results'
 import { renderSummaryTable } from '../../src/job-summary'
 import dedent from 'dedent'
 
+import { configureTestEnv } from './test-env'
+configureTestEnv()
+
 
 const successfulHelpBuild: BuildResult = {
     rootProjectName: 'root',

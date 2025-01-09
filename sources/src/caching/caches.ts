@@ -10,6 +10,7 @@ import {CacheCleaner} from './cache-cleaner'
 import {DaemonController} from '../daemon-controller'
 import {CacheConfig} from '../configuration'
 import {BuildResults} from '../build-results'
+import {state} from '../env/state'
 
 const CACHE_RESTORED_VAR = 'GRADLE_BUILD_ACTION_CACHE_RESTORED'
 
@@ -24,7 +25,7 @@ export async function restore(
         core.info('Cache only restored on first action step.')
         return
     }
-    core.exportVariable(CACHE_RESTORED_VAR, true)
+    state.exportVariable(CACHE_RESTORED_VAR, true.toString())
 
     const gradleStateCache = new GradleUserHomeCache(userHome, gradleUserHome, cacheConfig)
 
@@ -49,7 +50,7 @@ export async function restore(
 
     gradleStateCache.init()
     // Mark the state as restored so that post-action will perform save.
-    core.saveState(CACHE_RESTORED_VAR, true)
+    state.set(CACHE_RESTORED_VAR, true.toString())
 
     if (cacheConfig.isCacheCleanupEnabled()) {
         core.info('Preparing cache for cleanup.')
@@ -81,7 +82,7 @@ export async function save(
         return
     }
 
-    if (!core.getState(CACHE_RESTORED_VAR)) {
+    if (!state.get(CACHE_RESTORED_VAR)) {
         core.info('Cache will not be saved: not restored in main action step.')
         return
     }

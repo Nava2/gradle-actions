@@ -1,5 +1,6 @@
 import * as core from '@actions/core'
 import {getActionId} from './configuration'
+import {state} from './env/state'
 
 const DEPRECATION_UPGRADE_PAGE = 'https://github.com/gradle/actions/blob/main/docs/deprecation-upgrade-guide.md'
 const recordedDeprecations: Deprecation[] = []
@@ -27,7 +28,7 @@ export function failOnUseOfRemovedFeature(removalMessage: string, deprecationMes
     const deprecation = new Deprecation(deprecationMessage)
     const errorMessage = `${removalMessage}.\nSee ${deprecation.getDocumentationLink()}`
     recordedErrors.push(errorMessage)
-    core.setFailed(errorMessage)
+    state.setFailed(errorMessage)
 }
 
 export function getDeprecations(): Deprecation[] {
@@ -50,12 +51,12 @@ export function emitDeprecationWarnings(hasJobSummary = true): void {
 }
 
 export function saveDeprecationState(): void {
-    core.saveState('deprecation-collector_deprecations', JSON.stringify(recordedDeprecations))
-    core.saveState('deprecation-collector_errors', JSON.stringify(recordedErrors))
+    state.set('deprecation-collector_deprecations', JSON.stringify(recordedDeprecations))
+    state.set('deprecation-collector_errors', JSON.stringify(recordedErrors))
 }
 
 export function restoreDeprecationState(): void {
-    const savedDeprecations = core.getState('deprecation-collector_deprecations')
+    const savedDeprecations = state.get('deprecation-collector_deprecations')
     if (savedDeprecations) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         JSON.parse(savedDeprecations).forEach((obj: any) => {
@@ -63,7 +64,7 @@ export function restoreDeprecationState(): void {
         })
     }
 
-    const savedErrors = core.getState('deprecation-collector_errors')
+    const savedErrors = state.get('deprecation-collector_errors')
     if (savedErrors) {
         recordedErrors.push(...JSON.parse(savedErrors))
     }

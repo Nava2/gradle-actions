@@ -1,10 +1,10 @@
-import * as core from '@actions/core'
 import * as exec from '@actions/exec'
 
 import which from 'which'
 import * as semver from 'semver'
 import * as provisioner from './provision'
 import * as gradlew from './gradlew'
+import {state} from '../env/state'
 
 export async function provisionAndMaybeExecute(
     gradleVersion: string,
@@ -30,7 +30,7 @@ async function executeGradleBuild(executable: string | undefined, root: string, 
     })
 
     if (status !== 0) {
-        core.setFailed(`Gradle build failed: see console output for details`)
+        state.setFailed(`Gradle build failed: see console output for details`)
     }
 }
 

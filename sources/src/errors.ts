@@ -1,4 +1,5 @@
 import * as core from '@actions/core'
+import {state} from './env/state'
 
 export class JobFailure extends Error {
     constructor(error: unknown) {
@@ -14,7 +15,7 @@ export class JobFailure extends Error {
 
 export function handleMainActionError(error: unknown): void {
     if (error instanceof AggregateError) {
-        core.setFailed(`Multiple errors returned`)
+        state.setFailed(`Multiple errors returned`)
         for (const err of error.errors) {
             core.error(`Error ${error.errors.indexOf(err)}: ${err.message}`)
             if (err.stack) {
@@ -22,12 +23,12 @@ export function handleMainActionError(error: unknown): void {
             }
         }
     } else if (error instanceof JobFailure) {
-        core.setFailed(String(error))
+        state.setFailed(String(error))
         if (error.stack) {
             core.info(error.stack)
         }
     } else {
-        core.setFailed(String(error))
+        state.setFailed(String(error))
         if (error instanceof Error && error.stack) {
             core.info(error.stack)
         }
@@ -36,7 +37,7 @@ export function handleMainActionError(error: unknown): void {
 
 export function handlePostActionError(error: unknown): void {
     if (error instanceof JobFailure) {
-        core.setFailed(String(error))
+        state.setFailed(String(error))
         if (error.stack) {
             core.info(error.stack)
         }

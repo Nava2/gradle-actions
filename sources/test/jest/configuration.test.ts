@@ -1,5 +1,8 @@
 import * as inputParams from '../../src/configuration'
 
+import { configureTestEnv } from './test-env'
+configureTestEnv()
+
 describe('input params', () => {
     describe('parses numeric input', () => {
         it('uses default value', () => {

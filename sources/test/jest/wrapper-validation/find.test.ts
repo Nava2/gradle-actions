@@ -2,6 +2,9 @@ import * as path from 'path'
 import * as find from '../../../src/wrapper-validation/find'
 import {expect, test} from '@jest/globals'
 
+import { configureTestEnv } from '../test-env'
+configureTestEnv()
+
 test('finds test data wrapper jars', async () => {
   const repoRoot = path.resolve('./test/jest/wrapper-validation')
   const wrapperJars = await find.findWrapperJars(repoRoot)

@@ -1,6 +1,9 @@
 import {DevelocityAccessCredentials, getToken} from "../../src/develocity/short-lived-token";
 import nock from "nock";
 
+import { configureTestEnv } from './test-env'
+configureTestEnv()
+
 describe('short lived tokens', () => {
     it('parse valid access key should return an object', async () => {
         let develocityAccessCredentials = DevelocityAccessCredentials.parse('some-host.local=key1;host2=key2');

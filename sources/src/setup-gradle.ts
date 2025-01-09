@@ -18,6 +18,7 @@ import {
     getWorkspaceDirectory
 } from './configuration'
 import * as wrapperValidator from './wrapper-validation/wrapper-validator'
+import {state} from './env/state'
 
 const GRADLE_SETUP_VAR = 'GRADLE_BUILD_ACTION_SETUP_COMPLETED'
 const USER_HOME = 'USER_HOME'
@@ -38,18 +39,18 @@ export async function setup(
         return false
     }
     // Record setup complete: visible to all subsequent actions and prevents duplicate setup
-    core.exportVariable(GRADLE_SETUP_VAR, true)
+    state.exportVariable(GRADLE_SETUP_VAR, true.toString())
     // Record setup complete: visible in post-action, to control action completion
-    core.saveState(GRADLE_SETUP_VAR, true)
+    state.set(GRADLE_SETUP_VAR, true.toString())
 
     // Save the User Home and Gradle User Home for use in the post-action step.
-    core.saveState(USER_HOME, userHome)
-    core.saveState(GRADLE_USER_HOME, gradleUserHome)
+    state.set(USER_HOME, userHome)
+    state.set(GRADLE_USER_HOME, gradleUserHome)
 
     const cacheListener = new CacheListener()
     await caches.restore(userHome, gradleUserHome, cacheListener, cacheConfig)
 
-    core.saveState(CACHE_LISTENER, cacheListener.stringify())
+    state.set(CACHE_LISTENER, cacheListener.stringify())
 
     await wrapperValidator.validateWrappers(wrapperValidationConfig, getWorkspaceDirectory(), gradleUserHome)
 
@@ -59,7 +60,7 @@ export async function setup(
 }
 
 export async function complete(cacheConfig: CacheConfig, summaryConfig: SummaryConfig): Promise<boolean> {
-    if (!core.getState(GRADLE_SETUP_VAR)) {
+    if (!state.get(GRADLE_SETUP_VAR)) {
         core.info('Gradle setup post-action only performed for first gradle/actions step in workflow.')
         return false
     }
@@ -67,9 +68,9 @@ export async function complete(cacheConfig: CacheConfig, summaryConfig: SummaryC
 
     const buildResults = loadBuildResults()
 
-    const userHome = core.getState(USER_HOME)
-    const gradleUserHome = core.getState(GRADLE_USER_HOME)
-    const cacheListener: CacheListener = CacheListener.rehydrate(core.getState(CACHE_LISTENER))
+    const userHome = state.get(USER_HOME)
+    const gradleUserHome = state.get(GRADLE_USER_HOME)
+    const cacheListener: CacheListener = CacheListener.rehydrate(state.get(CACHE_LISTENER))
 
     const daemonController = new DaemonController(buildResults)
     await caches.save(userHome, gradleUserHome, cacheListener, daemonController, buildResults, cacheConfig)
@@ -95,7 +96,7 @@ async function determineGradleUserHome(): Promise<string> {
     // Use the default Gradle User Home if it already exists
     if (fs.existsSync(defaultGradleUserHome)) {
         core.info(`Gradle User Home already exists at ${defaultGradleUserHome}`)
-        core.exportVariable('GRADLE_USER_HOME', defaultGradleUserHome)
+        state.exportVariable('GRADLE_USER_HOME', defaultGradleUserHome)
         return defaultGradleUserHome
     }
 
@@ -103,11 +104,11 @@ async function determineGradleUserHome(): Promise<string> {
     if (os.platform() === 'win32' && defaultGradleUserHome.startsWith('C:\\') && fs.existsSync('D:\\a\\')) {
         const fasterGradleUserHome = 'D:\\a\\.gradle'
         core.info(`Setting GRADLE_USER_HOME to ${fasterGradleUserHome} to leverage (potentially) faster drive.`)
-        core.exportVariable('GRADLE_USER_HOME', fasterGradleUserHome)
+        state.exportVariable('GRADLE_USER_HOME', fasterGradleUserHome)
         return fasterGradleUserHome
     }
 
-    core.exportVariable('GRADLE_USER_HOME', defaultGradleUserHome)
+    state.exportVariable('GRADLE_USER_HOME', defaultGradleUserHome)
     return defaultGradleUserHome
 }
 

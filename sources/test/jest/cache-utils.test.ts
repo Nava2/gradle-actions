@@ -1,5 +1,8 @@
 import * as cacheUtils from '../../src/caching/cache-utils'
 
+import { configureTestEnv } from './test-env'
+configureTestEnv()
+
 describe('cacheUtils-utils', () => {
     describe('can hash', () => {
         it('a string', async () => {

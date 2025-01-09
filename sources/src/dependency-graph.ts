@@ -11,13 +11,14 @@ import fs from 'fs'
 
 import {JobFailure} from './errors'
 import {DependencyGraphConfig, DependencyGraphOption, getGithubToken, getWorkspaceDirectory} from './configuration'
+import {state} from './env/state'
 
 const DEPENDENCY_GRAPH_PREFIX = 'dependency-graph_'
 
 export async function setup(config: DependencyGraphConfig): Promise<void> {
     const option = config.getDependencyGraphOption()
     if (option === DependencyGraphOption.Disabled) {
-        core.exportVariable('GITHUB_DEPENDENCY_GRAPH_ENABLED', 'false')
+        state.exportVariable('GITHUB_DEPENDENCY_GRAPH_ENABLED', 'false')
         return
     }
     // Download and submit early, for compatability with dependency review.
@@ -28,7 +29,7 @@ export async function setup(config: DependencyGraphConfig): Promise<void> {
     }
 
     core.info('Enabling dependency graph generation')
-    core.exportVariable('GITHUB_DEPENDENCY_GRAPH_ENABLED', 'true')
+    state.exportVariable('GITHUB_DEPENDENCY_GRAPH_ENABLED', 'true')
     maybeExportVariable('GITHUB_DEPENDENCY_GRAPH_CONTINUE_ON_FAILURE', config.getDependencyGraphContinueOnFailure())
     maybeExportVariable('GITHUB_DEPENDENCY_GRAPH_JOB_CORRELATOR', config.getJobCorrelator())
     maybeExportVariable('GITHUB_DEPENDENCY_GRAPH_JOB_ID', github.context.runId.toString())
@@ -46,7 +47,7 @@ export async function setup(config: DependencyGraphConfig): Promise<void> {
 function maybeExportVariable(variableName: string, value: string | boolean | undefined): void {
     if (!process.env[variableName]) {
         if (value !== undefined) {
-            core.exportVariable(variableName, value)
+            state.exportVariable(variableName, JSON.stringify(value))
         }
     }
 }

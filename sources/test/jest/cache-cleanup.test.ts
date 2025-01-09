@@ -5,6 +5,9 @@ import fs from 'fs'
 import path from 'path'
 import {CacheCleaner} from '../../src/caching/cache-cleaner'
 
+import { configureTestEnv } from './test-env'
+configureTestEnv()
+
 jest.setTimeout(120000)
 
 test('will cleanup unused dependency jars and build-cache entries', async () => {

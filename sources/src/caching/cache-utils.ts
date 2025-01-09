@@ -6,13 +6,14 @@ import * as crypto from 'crypto'
 import * as path from 'path'
 import * as fs from 'fs'
 
+import {state} from '../env/state'
 import {CacheEntryListener} from './cache-reporting'
 
 const SEGMENT_DOWNLOAD_TIMEOUT_VAR = 'SEGMENT_DOWNLOAD_TIMEOUT_MINS'
 const SEGMENT_DOWNLOAD_TIMEOUT_DEFAULT = 10 * 60 * 1000 // 10 minutes
 
 export function isCacheDebuggingEnabled(): boolean {
-    if (core.isDebug()) {
+    if (state.isDebug()) {
         return true
     }
     return process.env['GRADLE_BUILD_ACTION_CACHE_DEBUG_ENABLED'] ? true : false

@@ -1,5 +1,8 @@
 import {getPredefinedToolchains, mergeToolchainContent} from "../../src/caching/gradle-user-home-utils";
 
+import { configureTestEnv } from './test-env'
+configureTestEnv()
+
 describe('predefined-toolchains', () => {
     const OLD_ENV = process.env
     afterAll(() => {
