@@ -13,6 +13,9 @@ import {
 import {failOnUseOfRemovedFeature, saveDeprecationState} from '../../deprecation-collector'
 import {handleMainActionError} from '../../errors'
 
+import {configureGithubEnv} from '../github-actions-env'
+configureGithubEnv()
+
 /**
  * The main entry point for the action, called by Github Actions for the step.
  */

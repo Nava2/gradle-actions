@@ -5,6 +5,9 @@ import {CacheConfig, DependencyGraphConfig, SummaryConfig} from '../../configura
 import {handlePostActionError} from '../../errors'
 import {emitDeprecationWarnings, restoreDeprecationState} from '../../deprecation-collector'
 
+import {configureGithubEnv} from '../github-actions-env'
+configureGithubEnv()
+
 // Catch and log any unhandled exceptions.  These exceptions can leak out of the uploadChunk method in
 // @actions/toolkit when a failed upload closes the file descriptor causing any in-process reads to
 // throw an uncaught exception.  Instead of failing this action, just warn.

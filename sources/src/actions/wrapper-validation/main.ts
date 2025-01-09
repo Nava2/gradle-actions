@@ -7,6 +7,9 @@ import {getActionId, setActionId} from '../../configuration'
 import {failOnUseOfRemovedFeature, emitDeprecationWarnings} from '../../deprecation-collector'
 import {handleMainActionError} from '../../errors'
 
+import {configureGithubEnv} from '../github-actions-env'
+configureGithubEnv()
+
 export async function run(): Promise<void> {
     try {
         if (getActionId() === 'gradle/wrapper-validation-action') {
