@@ -1,6 +1,6 @@
 import * as httpm from 'typed-rest-client/HttpClient'
 import * as cheerio from 'cheerio'
-import * as core from '@actions/core'
+import {log} from '../env'
 
 import fileWrapperChecksums from './wrapper-checksums.json'
 
@@ -104,6 +104,6 @@ async function fetchAndStoreChecksums(
                 wrapperChecksums.add(version, checksum)
             })
         )
-        core.info(`Fetched ${i + batch.length} of ${checksumUrls.length} checksums`)
+        log.info(`Fetched ${i + batch.length} of ${checksumUrls.length} checksums`)
     }
 }

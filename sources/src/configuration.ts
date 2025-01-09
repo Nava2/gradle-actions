@@ -1,9 +1,8 @@
-import * as core from '@actions/core'
 import * as github from '@actions/github'
 import * as cache from '@actions/cache'
 import * as deprecator from './deprecation-collector'
 import {SUMMARY_ENV_VAR} from '@actions/core/lib/summary'
-import {state} from './env'
+import {log, state} from './env'
 
 import path from 'path'
 
@@ -77,7 +76,7 @@ export class DependencyGraphConfig {
     }
 
     private static describeMatrix(matrixJson: string): string {
-        core.debug(`Got matrix json: ${matrixJson}`)
+        log.debug(`Got matrix json: ${matrixJson}`)
         const matrix = JSON.parse(matrixJson)
         if (matrix) {
             return Object.values(matrix).join('-')
@@ -317,7 +316,7 @@ export class BuildScanConfig {
                 this.getBuildScanTermsOfUseUrl() !== 'https://gradle.com/help/legal-terms-of-use') ||
             this.getBuildScanTermsOfUseAgree() !== 'yes'
         ) {
-            core.warning(
+            log.warn(
                 `Terms of use at 'https://gradle.com/help/legal-terms-of-use' must be agreed in order to publish build scans.`
             )
             return false

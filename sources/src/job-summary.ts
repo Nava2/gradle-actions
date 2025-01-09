@@ -5,6 +5,7 @@ import {RequestError} from '@octokit/request-error'
 import {BuildResults, BuildResult} from './build-results'
 import {SummaryConfig, getActionId, getGithubToken} from './configuration'
 import {Deprecation, getDeprecations, getErrors} from './deprecation-collector'
+import {log} from './env'
 
 export async function generateJobSummary(
     buildResults: BuildResults,
@@ -22,17 +23,17 @@ export async function generateJobSummary(
 
     const hasFailure = buildResults.anyFailed()
     if (config.shouldGenerateJobSummary(hasFailure)) {
-        core.info('Generating Job Summary')
+        log.info('Generating Job Summary')
 
         core.summary.addRaw(summaryTable)
         core.summary.addRaw(cachingReport)
         await core.summary.write()
     } else {
-        core.info('============================')
-        core.info(summaryTable)
-        core.info('============================')
-        core.info(cachingReport)
-        core.info('============================')
+        log.info('============================')
+        log.info(summaryTable)
+        log.info('============================')
+        log.info(cachingReport)
+        log.info('============================')
     }
 
     if (config.shouldAddPRComment(hasFailure)) {
@@ -43,12 +44,12 @@ export async function generateJobSummary(
 async function addPRComment(jobSummary: string): Promise<void> {
     const context = github.context
     if (context.payload.pull_request == null) {
-        core.info('No pull_request trigger detected: not adding PR comment')
+        log.info('No pull_request trigger detected: not adding PR comment')
         return
     }
 
     const pull_request_number = context.payload.pull_request.number
-    core.info(`Adding Job Summary as comment to PR #${pull_request_number}.`)
+    log.info(`Adding Job Summary as comment to PR #${pull_request_number}.`)
 
     const prComment = `<h3>Job Summary for Gradle</h3>
 <a href="${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}" target="_blank">
@@ -67,7 +68,7 @@ ${jobSummary}`
         })
     } catch (error) {
         if (error instanceof RequestError) {
-            core.warning(buildWarningMessage(error))
+            log.warn(buildWarningMessage(error))
         } else {
             throw error
         }

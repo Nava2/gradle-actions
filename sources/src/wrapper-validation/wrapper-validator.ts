@@ -4,6 +4,7 @@ import {WrapperValidationConfig} from '../configuration'
 import {ChecksumCache} from './cache'
 import {findInvalidWrapperJars} from './validate'
 import {JobFailure} from '../errors'
+import {log} from '../env'
 
 export async function validateWrappers(
     config: WrapperValidationConfig,
@@ -26,11 +27,11 @@ export async function validateWrappers(
     )
     if (result.isValid()) {
         await core.group('All Gradle Wrapper jars are valid', async () => {
-            core.debug(`Loaded previously validated checksums from cache: ${previouslyValidatedChecksums.join(', ')}`)
-            core.info(result.toDisplayString())
+            log.debug(`Loaded previously validated checksums from cache: ${previouslyValidatedChecksums.join(', ')}`)
+            log.info(result.toDisplayString())
         })
     } else {
-        core.info(result.toDisplayString())
+        log.info(result.toDisplayString())
         throw new JobFailure(
             `At least one Gradle Wrapper Jar failed validation!\n  See https://github.com/gradle/actions/blob/main/docs/wrapper-validation.md#validation-failures\n${result.toDisplayString()}`
         )

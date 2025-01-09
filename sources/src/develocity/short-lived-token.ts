@@ -2,15 +2,15 @@ import * as httpm from 'typed-rest-client/HttpClient'
 import * as core from '@actions/core'
 import {BuildScanConfig} from '../configuration'
 import {recordDeprecation} from '../deprecation-collector'
-import {state} from '../env'
+import {log, state} from '../env'
 
 export async function setupToken(develocityAccessKey: string, develocityTokenExpiry: string): Promise<void> {
     if (develocityAccessKey) {
         try {
-            core.debug('Fetching short-lived token...')
+            log.debug('Fetching short-lived token...')
             const tokens = await getToken(develocityAccessKey, develocityTokenExpiry)
             if (tokens != null && !tokens.isEmpty()) {
-                core.debug(`Got token(s), setting the access key env vars`)
+                log.debug(`Got token(s), setting the access key env vars`)
                 const token = tokens.raw()
                 core.setSecret(token)
                 exportAccessKeyEnvVars(token)
@@ -19,7 +19,7 @@ export async function setupToken(develocityAccessKey: string, develocityTokenExp
             }
         } catch (e) {
             handleMissingAccessToken()
-            core.warning(`Failed to fetch short-lived token, reason: ${e}`)
+            log.warn(`Failed to fetch short-lived token, reason: ${e}`)
         }
     }
 }
@@ -31,14 +31,14 @@ function exportAccessKeyEnvVars(value: string): void {
 }
 
 function handleMissingAccessToken(): void {
-    core.warning(`Failed to fetch short-lived token for Develocity`)
+    log.warn(`Failed to fetch short-lived token for Develocity`)
 
     if (process.env[BuildScanConfig.GradleEnterpriseAccessKeyEnvVar]) {
         // We do not clear the GRADLE_ENTERPRISE_ACCESS_KEY env var in v3, to let the users upgrade to DV 2024.1
         recordDeprecation(`The ${BuildScanConfig.GradleEnterpriseAccessKeyEnvVar} env var is deprecated`)
     }
     if (process.env[BuildScanConfig.DevelocityAccessKeyEnvVar]) {
-        core.warning(`The ${BuildScanConfig.DevelocityAccessKeyEnvVar} env var should be mapped to a short-lived token`)
+        log.warn(`The ${BuildScanConfig.DevelocityAccessKeyEnvVar} env var should be mapped to a short-lived token`)
     }
 }
 
@@ -53,12 +53,12 @@ export async function getToken(accessKey: string, expiry: string): Promise<Devel
     const tokens = new Array<HostnameAccessKey>()
     for (const k of develocityAccessKey.keys) {
         try {
-            core.info(`Requesting short-lived Develocity access token for ${k.hostname}`)
+            log.info(`Requesting short-lived Develocity access token for ${k.hostname}`)
             const token = await shortLivedTokenClient.fetchToken(`https://${k.hostname}`, k, expiry)
             tokens.push(token)
         } catch (e) {
             // Ignore failure to obtain token
-            core.info(`Failed to obtain short-lived Develocity access token for ${k.hostname}: ${e}`)
+            log.info(`Failed to obtain short-lived Develocity access token for ${k.hostname}: ${e}`)
         }
     }
     if (tokens.length > 0) {
@@ -84,7 +84,7 @@ class ShortLivedTokenClient {
         while (attempts < this.maxRetries) {
             try {
                 const requestUrl = `${sanitizedServerUrl}api/auth/token${queryParams}`
-                core.debug(`Attempt ${attempts} to fetch short lived token at ${requestUrl}`)
+                log.debug(`Attempt ${attempts} to fetch short lived token at ${requestUrl}`)
                 const response = await this.httpc.post(requestUrl, '', headers)
                 if (response.message.statusCode === 200) {
                     const text = await response.readBody()

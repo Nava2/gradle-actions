@@ -10,7 +10,7 @@ import {CacheCleaner} from './cache-cleaner'
 import {DaemonController} from '../daemon-controller'
 import {CacheConfig} from '../configuration'
 import {BuildResults} from '../build-results'
-import {state} from '../env'
+import {log, state} from '../env'
 
 const CACHE_RESTORED_VAR = 'GRADLE_BUILD_ACTION_CACHE_RESTORED'
 
@@ -22,7 +22,7 @@ export async function restore(
 ): Promise<void> {
     // Bypass restore cache on all but first action step in workflow.
     if (process.env[CACHE_RESTORED_VAR]) {
-        core.info('Cache only restored on first action step.')
+        log.info('Cache only restored on first action step.')
         return
     }
     state.exportVariable(CACHE_RESTORED_VAR, true)
@@ -30,7 +30,7 @@ export async function restore(
     const gradleStateCache = new GradleUserHomeCache(userHome, gradleUserHome, cacheConfig)
 
     if (cacheConfig.isCacheDisabled()) {
-        core.info('Cache is disabled: will not restore state from previous builds.')
+        log.info('Cache is disabled: will not restore state from previous builds.')
         // Initialize the Gradle User Home even when caching is disabled.
         gradleStateCache.init()
         cacheListener.setDisabled()
@@ -39,13 +39,13 @@ export async function restore(
 
     if (gradleStateCache.cacheOutputExists()) {
         if (!cacheConfig.isCacheOverwriteExisting()) {
-            core.info('Gradle User Home already exists: will not restore from cache.')
+            log.info('Gradle User Home already exists: will not restore from cache.')
             // Initialize pre-existing Gradle User Home.
             gradleStateCache.init()
             cacheListener.setDisabled(EXISTING_GRADLE_HOME)
             return
         }
-        core.info('Gradle User Home already exists: will overwrite with cached contents.')
+        log.info('Gradle User Home already exists: will overwrite with cached contents.')
     }
 
     gradleStateCache.init()
@@ -53,13 +53,13 @@ export async function restore(
     state.save(CACHE_RESTORED_VAR, true)
 
     if (cacheConfig.isCacheCleanupEnabled()) {
-        core.info('Preparing cache for cleanup.')
+        log.info('Preparing cache for cleanup.')
         const cacheCleaner = new CacheCleaner(gradleUserHome, process.env['RUNNER_TEMP']!)
         await cacheCleaner.prepare()
     }
 
     if (cacheConfig.isCacheWriteOnly()) {
-        core.info('Cache is write-only: will not restore from cache.')
+        log.info('Cache is write-only: will not restore from cache.')
         cacheListener.setWriteOnly()
         return
     }
@@ -78,17 +78,17 @@ export async function save(
     cacheConfig: CacheConfig
 ): Promise<void> {
     if (cacheConfig.isCacheDisabled()) {
-        core.info('Cache is disabled: will not save state for later builds.')
+        log.info('Cache is disabled: will not save state for later builds.')
         return
     }
 
     if (!state.get(CACHE_RESTORED_VAR)) {
-        core.info('Cache will not be saved: not restored in main action step.')
+        log.info('Cache will not be saved: not restored in main action step.')
         return
     }
 
     if (cacheConfig.isCacheReadOnly()) {
-        core.info('Cache is read-only: will not save state for use in subsequent builds.')
+        log.info('Cache is read-only: will not save state for use in subsequent builds.')
         cacheListener.setReadOnly()
         return
     }
@@ -99,13 +99,13 @@ export async function save(
 
     if (cacheConfig.isCacheCleanupEnabled()) {
         if (buildResults.anyConfigCacheHit()) {
-            core.info('Not performing cache-cleanup due to config-cache reuse')
+            log.info('Not performing cache-cleanup due to config-cache reuse')
             cacheListener.setCacheCleanupDisabled(CLEANUP_DISABLED_DUE_TO_CONFIG_CACHE_HIT)
         } else if (cacheConfig.shouldPerformCacheCleanup(buildResults.anyFailed())) {
             cacheListener.setCacheCleanupEnabled()
             await performCacheCleanup(gradleUserHome)
         } else {
-            core.info('Not performing cache-cleanup due to build failure')
+            log.info('Not performing cache-cleanup due to build failure')
             cacheListener.setCacheCleanupDisabled(CLEANUP_DISABLED_DUE_TO_FAILURE)
         }
     }
@@ -120,6 +120,6 @@ async function performCacheCleanup(gradleUserHome: string): Promise<void> {
     try {
         await cacheCleaner.forceCleanup()
     } catch (e) {
-        core.warning(`Cache cleanup failed. Will continue. ${String(e)}`)
+        log.warn(`Cache cleanup failed. Will continue. ${String(e)}`)
     }
 }
