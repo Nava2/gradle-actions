@@ -4,8 +4,6 @@ import * as ghExec from '@actions/exec'
 
 import {
     cache,
-    CacheEntryAlreadyExistsError,
-    CacheValidationError,
     CICacheEntry,
     exec,
     CIExecOptions,
@@ -76,17 +74,17 @@ function setupCache(): void {
         isAvailable: ghCache.isFeatureAvailable,
 
         saveCache: async (paths: string[], key: string): Promise<CICacheEntry> => {
-            try {
-                return await ghCache.saveCache(paths, key)
-            } catch (error) {
-                if (error instanceof ghCache.ReserveCacheError) {
-                    throw new CacheEntryAlreadyExistsError(error.message)
-                } else if (error instanceof ghCache.ValidationError) {
-                    throw new CacheValidationError(error.message)
-                } else {
-                    throw error
-                }
-            }
+            // try {
+            return await ghCache.saveCache(paths, key)
+            // } catch (error) {
+            //     if (error instanceof ghCache.ReserveCacheError) {
+            //         throw new CacheEntryAlreadyExistsError(error.message)
+            //     } else if (error instanceof ghCache.ValidationError) {
+            //         throw new CacheValidationError(error.message)
+            //     } else {
+            //         throw error
+            //     }
+            // }
         },
 
         restoreCache: ghCache.restoreCache

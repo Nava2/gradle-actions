@@ -1,8 +1,9 @@
+import * as ghCache from '@actions/cache'
 import * as crypto from 'crypto'
 import * as path from 'path'
 import * as fs from 'fs'
 
-import {cache, CacheEntryAlreadyExistsError, CacheValidationError, CICacheEntry, exec, log} from '../env'
+import {cache, CICacheEntry, exec, log, RemoteCacheDownloadOptions} from '../env'
 import {CacheEntryListener} from './cache-reporting'
 
 const SEGMENT_DOWNLOAD_TIMEOUT_VAR = 'SEGMENT_DOWNLOAD_TIMEOUT_MINS'
@@ -30,7 +31,7 @@ export async function restoreCache(
     try {
         const startTime = Date.now()
         // Only override the read timeout if the SEGMENT_DOWNLOAD_TIMEOUT_MINS env var has NOT been set
-        const cacheRestoreOptions = process.env[SEGMENT_DOWNLOAD_TIMEOUT_VAR]
+        const cacheRestoreOptions: RemoteCacheDownloadOptions = process.env[SEGMENT_DOWNLOAD_TIMEOUT_VAR]
             ? {}
             : {segmentTimeoutInMs: SEGMENT_DOWNLOAD_TIMEOUT_DEFAULT}
         const restoredEntry = await cache.restoreCache(cachePath, cacheKey, cacheRestoreKeys, cacheRestoreOptions)
@@ -55,7 +56,7 @@ export async function saveCache(cachePath: string[], cacheKey: string, listener:
         listener.markSaved(savedEntry.key, savedEntry.size, saveTime)
         log.info(`Saved cache entry with key ${cacheKey} from ${cachePath.join()} in ${saveTime}ms`)
     } catch (error) {
-        if (error instanceof CacheEntryAlreadyExistsError) {
+        if (error instanceof ghCache.ReserveCacheError) {
             listener.markAlreadyExists(cacheKey)
         } else {
             listener.markNotSaved((error as Error).message)
@@ -65,11 +66,11 @@ export async function saveCache(cachePath: string[], cacheKey: string, listener:
 }
 
 export function handleCacheFailure(error: unknown, message: string): void {
-    if (error instanceof CacheValidationError) {
+    if (error instanceof ghCache.ValidationError) {
         // Fail on cache validation errors
         throw error
     }
-    if (error instanceof CacheEntryAlreadyExistsError) {
+    if (error instanceof ghCache.ReserveCacheError) {
         // Reserve cache errors are expected if the artifact has been previously cached
         log.info(`${message}: ${error}`)
     } else {
