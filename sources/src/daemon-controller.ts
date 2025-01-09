@@ -1,8 +1,7 @@
-import * as exec from '@actions/exec'
 import * as fs from 'fs'
 import * as path from 'path'
 import {BuildResults} from './build-results'
-import {log} from './env'
+import {exec, log} from './env'
 
 export class DaemonController {
     private readonly gradleHomes

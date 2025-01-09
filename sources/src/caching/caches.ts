@@ -1,4 +1,3 @@
-import * as core from '@actions/core'
 import {
     CacheListener,
     EXISTING_GRADLE_HOME,
@@ -10,7 +9,7 @@ import {CacheCleaner} from './cache-cleaner'
 import {DaemonController} from '../daemon-controller'
 import {CacheConfig} from '../configuration'
 import {BuildResults} from '../build-results'
-import {log, state} from '../env'
+import {exec, log, state} from '../env'
 
 const CACHE_RESTORED_VAR = 'GRADLE_BUILD_ACTION_CACHE_RESTORED'
 
@@ -64,7 +63,7 @@ export async function restore(
         return
     }
 
-    await core.group('Restore Gradle state from cache', async () => {
+    await exec.group('Restore Gradle state from cache', async () => {
         await gradleStateCache.restore(cacheListener)
     })
 }
@@ -93,7 +92,7 @@ export async function save(
         return
     }
 
-    await core.group('Stopping Gradle daemons', async () => {
+    await exec.group('Stopping Gradle daemons', async () => {
         await daemonController.stopAllDaemons()
     })
 
@@ -110,7 +109,7 @@ export async function save(
         }
     }
 
-    await core.group('Caching Gradle state', async () => {
+    await exec.group('Caching Gradle state', async () => {
         return new GradleUserHomeCache(userHome, gradleUserHome, cacheConfig).save(cacheListener)
     })
 }

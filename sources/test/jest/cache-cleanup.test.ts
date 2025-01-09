@@ -1,9 +1,8 @@
-import * as exec from '@actions/exec'
-import * as core from '@actions/core'
 import * as glob from '@actions/glob'
 import fs from 'fs'
 import path from 'path'
 import {CacheCleaner} from '../../src/caching/cache-cleaner'
+import {exec} from '../../src/env'
 
 import { configureTestEnv } from './test-env'
 configureTestEnv()

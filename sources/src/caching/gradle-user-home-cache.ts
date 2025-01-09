@@ -1,4 +1,3 @@
-import * as exec from '@actions/exec'
 import * as glob from '@actions/glob'
 
 import path from 'path'
@@ -9,7 +8,7 @@ import {saveCache, restoreCache, tryDelete} from './cache-utils'
 import {CacheConfig, ACTION_METADATA_DIR} from '../configuration'
 import {GradleHomeEntryExtractor, ConfigurationCacheEntryExtractor} from './gradle-home-extry-extractor'
 import {getPredefinedToolchains, mergeToolchainContent, readResourceFileAsString} from './gradle-user-home-utils'
-import {log, state} from '../env'
+import {exec, log, state} from '../env'
 
 const RESTORED_CACHE_KEY_KEY = 'restored-cache-key'
 

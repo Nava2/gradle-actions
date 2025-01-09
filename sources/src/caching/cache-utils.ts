@@ -1,11 +1,10 @@
 import * as cache from '@actions/cache'
-import * as exec from '@actions/exec'
 
 import * as crypto from 'crypto'
 import * as path from 'path'
 import * as fs from 'fs'
 
-import {log} from '../env'
+import {exec, log} from '../env'
 import {CacheEntryListener} from './cache-reporting'
 
 const SEGMENT_DOWNLOAD_TIMEOUT_VAR = 'SEGMENT_DOWNLOAD_TIMEOUT_MINS'

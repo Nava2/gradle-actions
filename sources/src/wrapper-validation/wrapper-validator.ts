@@ -1,10 +1,8 @@
-import * as core from '@actions/core'
-
 import {WrapperValidationConfig} from '../configuration'
 import {ChecksumCache} from './cache'
 import {findInvalidWrapperJars} from './validate'
 import {JobFailure} from '../errors'
-import {log} from '../env'
+import {exec, log} from '../env'
 
 export async function validateWrappers(
     config: WrapperValidationConfig,
@@ -26,7 +24,7 @@ export async function validateWrappers(
         previouslyValidatedChecksums
     )
     if (result.isValid()) {
-        await core.group('All Gradle Wrapper jars are valid', async () => {
+        await exec.group('All Gradle Wrapper jars are valid', async () => {
             log.debug(`Loaded previously validated checksums from cache: ${previouslyValidatedChecksums.join(', ')}`)
             log.info(result.toDisplayString())
         })

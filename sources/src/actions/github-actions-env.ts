@@ -1,5 +1,7 @@
 import * as core from '@actions/core'
-import {log, LogLevel, state} from '../env'
+import * as ghExec from '@actions/exec'
+
+import {exec, CIExecOptions, log, LogLevel, state} from '../env'
 
 function setupState(): void {
     state.setImpl({
@@ -36,7 +38,30 @@ function setupLogger(): void {
     })
 }
 
+function setupExec(): void {
+    exec.setImpl({
+        group: core.group,
+
+        run: async (command: string, args?: string[], options?: CIExecOptions): Promise<void> => {
+            await ghExec.exec(command, args, options)
+        },
+
+        exec: async (commandLine: string, args?: string[], options?: CIExecOptions): Promise<number> => {
+            return await ghExec.exec(commandLine, args, options)
+        },
+
+        getExecOutput: async (
+            command: string,
+            args?: string[],
+            options?: CIExecOptions
+        ): Promise<{stdout: string; stderr: string}> => {
+            return await ghExec.getExecOutput(command, args, options)
+        }
+    })
+}
+
 export const configureGithubEnv = (): void => {
     setupState()
     setupLogger()
+    setupExec()
 }

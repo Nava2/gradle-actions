@@ -1,10 +1,7 @@
-import * as core from '@actions/core'
-import * as exec from '@actions/exec'
-
 import fs from 'fs'
 import path from 'path'
 import * as provisioner from '../execution/provision'
-import {log, state} from '../env'
+import {exec, log, state} from '../env'
 
 export class CacheCleaner {
     private readonly gradleUserHome: string
@@ -59,7 +56,7 @@ export class CacheCleaner {
         // TODO: This is ineffective: we should be using the newest version of Gradle that ran a build, or a newer version if it's available on PATH.
         const executable = await provisioner.provisionGradleAtLeast('8.12')
 
-        await core.group('Executing Gradle to clean up caches', async () => {
+        await exec.group('Executing Gradle to clean up caches', async () => {
             log.info(`Cleaning up caches last used before ${cleanTimestamp}`)
             await this.executeCleanupBuild(executable, cleanupProjectDir)
         })

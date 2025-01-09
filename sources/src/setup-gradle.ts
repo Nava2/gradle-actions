@@ -1,4 +1,3 @@
-import * as exec from '@actions/exec'
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
@@ -17,7 +16,7 @@ import {
     getWorkspaceDirectory
 } from './configuration'
 import * as wrapperValidator from './wrapper-validation/wrapper-validator'
-import {log, state} from './env'
+import {exec, log, state} from './env'
 
 const GRADLE_SETUP_VAR = 'GRADLE_BUILD_ACTION_SETUP_COMPLETED'
 const USER_HOME = 'USER_HOME'

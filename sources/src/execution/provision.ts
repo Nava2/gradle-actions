@@ -10,7 +10,7 @@ import {findGradleVersionOnPath, versionIsAtLeast} from './gradle'
 import * as gradlew from './gradlew'
 import {handleCacheFailure} from '../caching/cache-utils'
 import {CacheConfig} from '../configuration'
-import {log} from '../env'
+import {exec, log} from '../env'
 
 const gradleVersionsBaseUrl = 'https://services.gradle.org/versions'
 
@@ -106,7 +106,7 @@ async function findGradleVersionDeclaration(version: string): Promise<GradleVers
 }
 
 async function installGradleVersion(versionInfo: GradleVersionInfo): Promise<string> {
-    return core.group(`Provision Gradle ${versionInfo.version}`, async () => {
+    return exec.group(`Provision Gradle ${versionInfo.version}`, async () => {
         const gradleOnPath = await findGradleVersionOnPath()
         if (gradleOnPath?.version === versionInfo.version) {
             log.info(`Gradle version ${versionInfo.version} is already available on PATH. Not installing.`)
@@ -118,7 +118,7 @@ async function installGradleVersion(versionInfo: GradleVersionInfo): Promise<str
 }
 
 async function installGradleVersionAtLeast(versionInfo: GradleVersionInfo): Promise<string> {
-    return core.group(`Provision Gradle >= ${versionInfo.version}`, async () => {
+    return exec.group(`Provision Gradle >= ${versionInfo.version}`, async () => {
         const gradleOnPath = await findGradleVersionOnPath()
         if (gradleOnPath && versionIsAtLeast(gradleOnPath.version, versionInfo.version)) {
             log.info(
