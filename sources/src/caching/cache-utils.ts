@@ -1,9 +1,16 @@
-import * as ghCache from '@actions/cache'
 import * as crypto from 'crypto'
 import * as path from 'path'
 import * as fs from 'fs'
 
-import {cache, CICacheEntry, exec, log, RemoteCacheDownloadOptions} from '../env'
+import {
+    cache,
+    CacheEntryAlreadyExistsError,
+    CacheValidationError,
+    CICacheEntry,
+    exec,
+    log,
+    RemoteCacheDownloadOptions
+} from '../env'
 import {CacheEntryListener} from './cache-reporting'
 
 const SEGMENT_DOWNLOAD_TIMEOUT_VAR = 'SEGMENT_DOWNLOAD_TIMEOUT_MINS'
@@ -56,7 +63,7 @@ export async function saveCache(cachePath: string[], cacheKey: string, listener:
         listener.markSaved(savedEntry.key, savedEntry.size, saveTime)
         log.info(`Saved cache entry with key ${cacheKey} from ${cachePath.join()} in ${saveTime}ms`)
     } catch (error) {
-        if (error instanceof ghCache.ReserveCacheError) {
+        if (error instanceof CacheEntryAlreadyExistsError) {
             listener.markAlreadyExists(cacheKey)
         } else {
             listener.markNotSaved((error as Error).message)
@@ -66,11 +73,11 @@ export async function saveCache(cachePath: string[], cacheKey: string, listener:
 }
 
 export function handleCacheFailure(error: unknown, message: string): void {
-    if (error instanceof ghCache.ValidationError) {
+    if (error instanceof CacheValidationError) {
         // Fail on cache validation errors
         throw error
     }
-    if (error instanceof ghCache.ReserveCacheError) {
+    if (error instanceof CacheEntryAlreadyExistsError) {
         // Reserve cache errors are expected if the artifact has been previously cached
         log.info(`${message}: ${error}`)
     } else {
