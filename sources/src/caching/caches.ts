@@ -25,7 +25,7 @@ export async function restore(
         core.info('Cache only restored on first action step.')
         return
     }
-    state.exportVariable(CACHE_RESTORED_VAR, true.toString())
+    state.exportVariable(CACHE_RESTORED_VAR, true)
 
     const gradleStateCache = new GradleUserHomeCache(userHome, gradleUserHome, cacheConfig)
 

@@ -39,9 +39,9 @@ export async function setup(
         return false
     }
     // Record setup complete: visible to all subsequent actions and prevents duplicate setup
-    state.exportVariable(GRADLE_SETUP_VAR, true.toString())
+    state.exportVariable(GRADLE_SETUP_VAR, true)
     // Record setup complete: visible in post-action, to control action completion
-    state.save(GRADLE_SETUP_VAR, true.toString())
+    state.save(GRADLE_SETUP_VAR, true)
 
     // Save the User Home and Gradle User Home for use in the post-action step.
     state.save(USER_HOME, userHome)

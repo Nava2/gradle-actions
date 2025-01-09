@@ -47,7 +47,7 @@ export async function setup(config: DependencyGraphConfig): Promise<void> {
 function maybeExportVariable(variableName: string, value: string | boolean | undefined): void {
     if (!process.env[variableName]) {
         if (value !== undefined) {
-            state.exportVariable(variableName, JSON.stringify(value))
+            state.exportVariable(variableName, value)
         }
     }
 }

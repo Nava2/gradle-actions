@@ -33,7 +33,7 @@ export async function setup(config: BuildScanConfig): Promise<void> {
 
 function maybeExportVariable(variableName: string, value: unknown): void {
     if (!process.env[variableName]) {
-        state.exportVariable(variableName, JSON.stringify(value))
+        state.exportVariable(variableName, value)
     }
 }
 
