@@ -3,14 +3,13 @@ import * as os from 'os'
 import * as path from 'path'
 import * as httpm from '@actions/http-client'
 import * as core from '@actions/core'
-import * as cache from '@actions/cache'
 import * as toolCache from '@actions/tool-cache'
 
 import {findGradleVersionOnPath, versionIsAtLeast} from './gradle'
 import * as gradlew from './gradlew'
 import {handleCacheFailure} from '../caching/cache-utils'
 import {CacheConfig} from '../configuration'
-import {exec, log} from '../env'
+import {cache, exec, log} from '../env'
 
 const gradleVersionsBaseUrl = 'https://services.gradle.org/versions'
 

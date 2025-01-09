@@ -1,7 +1,18 @@
 import * as core from '@actions/core'
+import * as ghCache from '@actions/cache'
 import * as ghExec from '@actions/exec'
 
-import {exec, CIExecOptions, log, LogLevel, state} from '../env'
+import {
+    cache,
+    CacheEntryAlreadyExistsError,
+    CacheValidationError,
+    CICacheEntry,
+    exec,
+    CIExecOptions,
+    log,
+    LogLevel,
+    state
+} from '../env'
 
 function setupState(): void {
     state.setImpl({
@@ -60,8 +71,31 @@ function setupExec(): void {
     })
 }
 
+function setupCache(): void {
+    cache.setImpl({
+        isAvailable: ghCache.isFeatureAvailable,
+
+        saveCache: async (paths: string[], key: string): Promise<CICacheEntry> => {
+            try {
+                return await ghCache.saveCache(paths, key)
+            } catch (error) {
+                if (error instanceof ghCache.ReserveCacheError) {
+                    throw new CacheEntryAlreadyExistsError(error.message)
+                } else if (error instanceof ghCache.ValidationError) {
+                    throw new CacheValidationError(error.message)
+                } else {
+                    throw error
+                }
+            }
+        },
+
+        restoreCache: ghCache.restoreCache
+    })
+}
+
 export const configureGithubEnv = (): void => {
     setupState()
     setupLogger()
     setupExec()
+    setupCache()
 }
