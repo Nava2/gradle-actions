@@ -83,6 +83,17 @@ export class CIState implements CIStateImplementation {
     }
 
     /**
+     * Checks if the action is being debugged _or_ `GRADLE_BUILD_ACTION_CACHE_DEBUG_ENABLED` is set in the environment.
+     * @returns True if debugging of the cache is enabled.
+     */
+    isCacheDebuggingEnabled(): boolean {
+        if (this.isDebug()) {
+            return true
+        }
+        return process.env['GRADLE_BUILD_ACTION_CACHE_DEBUG_ENABLED'] ? true : false
+    }
+
+    /**
      * @inheritdoc
      */
     get(key: string): string {

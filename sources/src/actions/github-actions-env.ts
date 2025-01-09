@@ -1,5 +1,5 @@
 import * as core from '@actions/core'
-import {state} from '../env'
+import {log, LogLevel, state} from '../env'
 
 function setupState(): void {
     state.setImpl({
@@ -13,6 +13,30 @@ function setupState(): void {
     })
 }
 
+function setupLogger(): void {
+    // Redirect the log output to the GitHub Actions logging system.
+    log.setWriter((level, message) => {
+        switch (level) {
+            case LogLevel.DEBUG:
+                core.debug(message)
+                break
+            case LogLevel.INFO:
+                core.info(message)
+                break
+            case LogLevel.NOTICE:
+                core.notice(message)
+                break
+            case LogLevel.WARN:
+                core.warning(message)
+                break
+            case LogLevel.ERROR:
+                core.error(message)
+                break
+        }
+    })
+}
+
 export const configureGithubEnv = (): void => {
     setupState()
+    setupLogger()
 }
