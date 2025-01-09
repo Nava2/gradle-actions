@@ -50,7 +50,7 @@ export async function restore(
 
     gradleStateCache.init()
     // Mark the state as restored so that post-action will perform save.
-    state.save(CACHE_RESTORED_VAR, true.toString())
+    state.save(CACHE_RESTORED_VAR, true)
 
     if (cacheConfig.isCacheCleanupEnabled()) {
         core.info('Preparing cache for cleanup.')
