@@ -1,6 +1,6 @@
-import * as core from '@actions/core'
 import * as path from 'path'
 import fs from 'fs'
+import {log} from '../env/logging'
 
 const IS_WINDOWS = process.platform === 'win32'
 
@@ -38,7 +38,7 @@ function verifyIsExecutableScript(toExecute: string): void {
     try {
         fs.accessSync(toExecute, fs.constants.X_OK)
     } catch (err) {
-        core.warning(
+        log.warn(
             `Gradle wrapper script '${toExecute}' is not executable. Action will set executable permission and continue.`
         )
         fs.chmodSync(toExecute, '755')

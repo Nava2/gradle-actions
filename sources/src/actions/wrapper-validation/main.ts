@@ -2,6 +2,7 @@ import * as path from 'path'
 import * as core from '@actions/core'
 
 import * as validate from '../../wrapper-validation/validate'
+import {log} from '../../env/logging'
 import {state} from '../../env/state'
 import {getActionId, setActionId} from '../../configuration'
 import {failOnUseOfRemovedFeature, emitDeprecationWarnings} from '../../deprecation-collector'
@@ -26,7 +27,7 @@ export async function run(): Promise<void> {
             state.getInput('allow-checksums').split(',')
         )
         if (result.isValid()) {
-            core.info(result.toDisplayString())
+            log.info(result.toDisplayString())
 
             const minWrapperCount = +state.getInput('min-wrapper-count')
             if (result.valid.length < minWrapperCount) {

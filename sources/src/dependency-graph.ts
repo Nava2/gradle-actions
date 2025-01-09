@@ -11,6 +11,7 @@ import fs from 'fs'
 
 import {JobFailure} from './errors'
 import {DependencyGraphConfig, DependencyGraphOption, getGithubToken, getWorkspaceDirectory} from './configuration'
+import {log} from './env/logging'
 import {state} from './env/state'
 
 const DEPENDENCY_GRAPH_PREFIX = 'dependency-graph_'
@@ -28,7 +29,7 @@ export async function setup(config: DependencyGraphConfig): Promise<void> {
         return
     }
 
-    core.info('Enabling dependency graph generation')
+    log.info('Enabling dependency graph generation')
     state.exportVariable('GITHUB_DEPENDENCY_GRAPH_ENABLED', 'true')
     maybeExportVariable('GITHUB_DEPENDENCY_GRAPH_CONTINUE_ON_FAILURE', config.getDependencyGraphContinueOnFailure())
     maybeExportVariable('GITHUB_DEPENDENCY_GRAPH_JOB_CORRELATOR', config.getJobCorrelator())
@@ -73,7 +74,7 @@ export async function complete(config: DependencyGraphConfig): Promise<void> {
 
 async function downloadAndSubmitDependencyGraphs(config: DependencyGraphConfig): Promise<void> {
     if (isRunningInActEnvironment()) {
-        core.info('Dependency graph not supported in the ACT environment.')
+        log.info('Dependency graph not supported in the ACT environment.')
         return
     }
 
@@ -86,7 +87,7 @@ async function downloadAndSubmitDependencyGraphs(config: DependencyGraphConfig):
 
 async function findAndSubmitDependencyGraphs(config: DependencyGraphConfig): Promise<void> {
     if (isRunningInActEnvironment()) {
-        core.info('Dependency graph not supported in the ACT environment.')
+        log.info('Dependency graph not supported in the ACT environment.')
         return
     }
 
@@ -97,7 +98,7 @@ async function findAndSubmitDependencyGraphs(config: DependencyGraphConfig): Pro
         try {
             await uploadDependencyGraphs(dependencyGraphFiles, config)
         } catch (uploadError) {
-            core.info(String(uploadError))
+            log.info(String(uploadError))
         }
         throw e
     }
@@ -105,7 +106,7 @@ async function findAndSubmitDependencyGraphs(config: DependencyGraphConfig): Pro
 
 async function findAndUploadDependencyGraphs(config: DependencyGraphConfig): Promise<void> {
     if (isRunningInActEnvironment()) {
-        core.info('Dependency graph not supported in the ACT environment.')
+        log.info('Dependency graph not supported in the ACT environment.')
         return
     }
 
@@ -133,7 +134,7 @@ async function downloadDependencyGraphs(config: DependencyGraphConfig): Promise<
 
     const artifactName = config.getDownloadArtifactName()
     if (artifactName) {
-        core.info(`Filtering for artifacts ending with ${artifactName}`)
+        log.info(`Filtering for artifacts ending with ${artifactName}`)
         dependencyGraphArtifacts = dependencyGraphArtifacts.filter(artifact => artifact.name.includes(artifactName))
     }
 
@@ -141,7 +142,7 @@ async function downloadDependencyGraphs(config: DependencyGraphConfig): Promise<
         const downloadedArtifact = await artifactClient.downloadArtifact(artifact.id, {
             findBy
         })
-        core.info(`Downloading dependency-graph artifact ${artifact.name} to ${downloadedArtifact.downloadPath}`)
+        log.info(`Downloading dependency-graph artifact ${artifact.name} to ${downloadedArtifact.downloadPath}`)
     }
 
     return findDependencyGraphFiles()
@@ -152,13 +153,13 @@ async function findDependencyGraphFiles(): Promise<string[]> {
     const allFiles = await globber.glob()
     const unprocessedFiles = allFiles.filter(file => !isProcessed(file))
     unprocessedFiles.forEach(markProcessed)
-    core.info(`Found dependency graph files: ${unprocessedFiles.join(', ')}`)
+    log.info(`Found dependency graph files: ${unprocessedFiles.join(', ')}`)
     return unprocessedFiles
 }
 
 async function uploadDependencyGraphs(dependencyGraphFiles: string[], config: DependencyGraphConfig): Promise<void> {
     if (dependencyGraphFiles.length === 0) {
-        core.info('No dependency graph files found to upload.')
+        log.info('No dependency graph files found to upload.')
         return
     }
 
@@ -167,7 +168,7 @@ async function uploadDependencyGraphs(dependencyGraphFiles: string[], config: De
     const artifactClient = new DefaultArtifactClient()
     for (const dependencyGraphFile of dependencyGraphFiles) {
         const relativePath = getRelativePathFromWorkspace(dependencyGraphFile)
-        core.info(`Uploading dependency graph file: ${relativePath}`)
+        log.info(`Uploading dependency graph file: ${relativePath}`)
         const artifactName = `${DEPENDENCY_GRAPH_PREFIX}${path.basename(dependencyGraphFile)}`
         await artifactClient.uploadArtifact(artifactName, [dependencyGraphFile], workspaceDirectory, {
             retentionDays: config.getArtifactRetentionDays()
@@ -177,7 +178,7 @@ async function uploadDependencyGraphs(dependencyGraphFiles: string[], config: De
 
 async function submitDependencyGraphs(dependencyGraphFiles: string[]): Promise<void> {
     if (dependencyGraphFiles.length === 0) {
-        core.info('No dependency graph files found to submit.')
+        log.info('No dependency graph files found to submit.')
         return
     }
 
@@ -236,7 +237,7 @@ function warnOrFail(config: DependencyGraphConfig, option: String, error: unknow
         throw new JobFailure(error)
     }
 
-    core.warning(`Failed to ${option} dependency graph. Will continue.\n${String(error)}`)
+    log.warn(`Failed to ${option} dependency graph. Will continue.\n${String(error)}`)
 }
 
 function getOctokit(): InstanceType<typeof GitHub> {

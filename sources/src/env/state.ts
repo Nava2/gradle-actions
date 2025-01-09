@@ -77,6 +77,13 @@ class GradleEnvState implements GradleEnvStateImplementation {
         return this.impl.isDebug()
     }
 
+    isCacheDebuggingEnabled(): boolean {
+        if (state.isDebug()) {
+            return true
+        }
+        return process.env['GRADLE_BUILD_ACTION_CACHE_DEBUG_ENABLED'] ? true : false
+    }
+
     get(key: string): string {
         return this.impl.get(key)
     }

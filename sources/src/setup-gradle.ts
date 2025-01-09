@@ -1,4 +1,3 @@
-import * as core from '@actions/core'
 import * as exec from '@actions/exec'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -18,6 +17,7 @@ import {
     getWorkspaceDirectory
 } from './configuration'
 import * as wrapperValidator from './wrapper-validation/wrapper-validator'
+import {log} from './env/logging'
 import {state} from './env/state'
 
 const GRADLE_SETUP_VAR = 'GRADLE_BUILD_ACTION_SETUP_COMPLETED'
@@ -35,7 +35,7 @@ export async function setup(
 
     // Bypass setup on all but first action step in workflow.
     if (process.env[GRADLE_SETUP_VAR]) {
-        core.info('Gradle setup only performed on first gradle/actions step in workflow.')
+        log.info('Gradle setup only performed on first gradle/actions step in workflow.')
         return false
     }
     // Record setup complete: visible to all subsequent actions and prevents duplicate setup
@@ -61,10 +61,10 @@ export async function setup(
 
 export async function complete(cacheConfig: CacheConfig, summaryConfig: SummaryConfig): Promise<boolean> {
     if (!state.get(GRADLE_SETUP_VAR)) {
-        core.info('Gradle setup post-action only performed for first gradle/actions step in workflow.')
+        log.info('Gradle setup post-action only performed for first gradle/actions step in workflow.')
         return false
     }
-    core.info('In post-action step')
+    log.info('In post-action step')
 
     const buildResults = loadBuildResults()
 
@@ -80,7 +80,7 @@ export async function complete(cacheConfig: CacheConfig, summaryConfig: SummaryC
 
     markBuildResultsProcessed()
 
-    core.info('Completed post-action step')
+    log.info('Completed post-action step')
 
     return true
 }
@@ -95,7 +95,7 @@ async function determineGradleUserHome(): Promise<string> {
     const defaultGradleUserHome = path.resolve(await determineUserHome(), '.gradle')
     // Use the default Gradle User Home if it already exists
     if (fs.existsSync(defaultGradleUserHome)) {
-        core.info(`Gradle User Home already exists at ${defaultGradleUserHome}`)
+        log.info(`Gradle User Home already exists at ${defaultGradleUserHome}`)
         state.exportVariable('GRADLE_USER_HOME', defaultGradleUserHome)
         return defaultGradleUserHome
     }
@@ -103,7 +103,7 @@ async function determineGradleUserHome(): Promise<string> {
     // Switch Gradle User Home to faster 'D:' drive if possible
     if (os.platform() === 'win32' && defaultGradleUserHome.startsWith('C:\\') && fs.existsSync('D:\\a\\')) {
         const fasterGradleUserHome = 'D:\\a\\.gradle'
-        core.info(`Setting GRADLE_USER_HOME to ${fasterGradleUserHome} to leverage (potentially) faster drive.`)
+        log.info(`Setting GRADLE_USER_HOME to ${fasterGradleUserHome} to leverage (potentially) faster drive.`)
         state.exportVariable('GRADLE_USER_HOME', fasterGradleUserHome)
         return fasterGradleUserHome
     }
@@ -121,10 +121,10 @@ async function determineUserHome(): Promise<string> {
     const regex = /user\.home = (\S*)/i
     const found = output.stderr.match(regex)
     if (found == null || found.length <= 1) {
-        core.info('Could not determine user.home from java -version output. Using os.homedir().')
+        log.info('Could not determine user.home from java -version output. Using os.homedir().')
         return os.homedir()
     }
     const userHome = found[1]
-    core.debug(`Determined user.home from java -version output: '${userHome}'`)
+    log.debug(`Determined user.home from java -version output: '${userHome}'`)
     return userHome
 }

@@ -1,4 +1,3 @@
-import * as core from '@actions/core'
 import * as cache from '@actions/cache'
 import * as exec from '@actions/exec'
 
@@ -6,18 +5,11 @@ import * as crypto from 'crypto'
 import * as path from 'path'
 import * as fs from 'fs'
 
-import {state} from '../env/state'
+import {log} from '../env/logging'
 import {CacheEntryListener} from './cache-reporting'
 
 const SEGMENT_DOWNLOAD_TIMEOUT_VAR = 'SEGMENT_DOWNLOAD_TIMEOUT_MINS'
 const SEGMENT_DOWNLOAD_TIMEOUT_DEFAULT = 10 * 60 * 1000 // 10 minutes
-
-export function isCacheDebuggingEnabled(): boolean {
-    if (state.isDebug()) {
-        return true
-    }
-    return process.env['GRADLE_BUILD_ACTION_CACHE_DEBUG_ENABLED'] ? true : false
-}
 
 export function hashFileNames(fileNames: string[]): string {
     return hashStrings(fileNames.map(x => x.replace(new RegExp(`\\${path.sep}`, 'g'), '/')))
@@ -48,7 +40,7 @@ export async function restoreCache(
         if (restoredEntry !== undefined) {
             const restoreTime = Date.now() - startTime
             listener.markRestored(restoredEntry.key, restoredEntry.size, restoreTime)
-            core.info(`Restored cache entry with key ${cacheKey} to ${cachePath.join()} in ${restoreTime}ms`)
+            log.info(`Restored cache entry with key ${cacheKey} to ${cachePath.join()} in ${restoreTime}ms`)
         }
         return restoredEntry
     } catch (error) {
@@ -64,7 +56,7 @@ export async function saveCache(cachePath: string[], cacheKey: string, listener:
         const savedEntry = await cache.saveCache(cachePath, cacheKey)
         const saveTime = Date.now() - startTime
         listener.markSaved(savedEntry.key, savedEntry.size, saveTime)
-        core.info(`Saved cache entry with key ${cacheKey} from ${cachePath.join()} in ${saveTime}ms`)
+        log.info(`Saved cache entry with key ${cacheKey} from ${cachePath.join()} in ${saveTime}ms`)
     } catch (error) {
         if (error instanceof cache.ReserveCacheError) {
             listener.markAlreadyExists(cacheKey)
@@ -75,14 +67,6 @@ export async function saveCache(cachePath: string[], cacheKey: string, listener:
     }
 }
 
-export function cacheDebug(message: string): void {
-    if (isCacheDebuggingEnabled()) {
-        core.info(message)
-    } else {
-        core.debug(message)
-    }
-}
-
 export function handleCacheFailure(error: unknown, message: string): void {
     if (error instanceof cache.ValidationError) {
         // Fail on cache validation errors
@@ -90,12 +74,12 @@ export function handleCacheFailure(error: unknown, message: string): void {
     }
     if (error instanceof cache.ReserveCacheError) {
         // Reserve cache errors are expected if the artifact has been previously cached
-        core.info(`${message}: ${error}`)
+        log.info(`${message}: ${error}`)
     } else {
         // Warn on all other errors
-        core.warning(`${message}: ${error}`)
+        log.warn(`${message}: ${error}`)
         if (error instanceof Error && error.stack) {
-            cacheDebug(error.stack)
+            log.cacheDebug(error.stack)
         }
     }
 }
@@ -119,12 +103,12 @@ export async function tryDelete(file: string): Promise<void> {
             return
         } catch (error) {
             if (attempt === maxAttempts) {
-                core.warning(`Failed to delete ${file}, which will impact caching. 
+                log.warn(`Failed to delete ${file}, which will impact caching. 
 It is likely locked by another process. Output of 'jps -ml':
 ${await getJavaProcesses()}`)
                 throw error
             } else {
-                cacheDebug(`Attempt to delete ${file} failed. Will try again.`)
+                log.cacheDebug(`Attempt to delete ${file} failed. Will try again.`)
                 await delay(1000)
             }
         }

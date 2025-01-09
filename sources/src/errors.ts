@@ -1,6 +1,8 @@
 import * as core from '@actions/core'
 import {state} from './env/state'
 
+import {log} from './env/logging'
+
 export class JobFailure extends Error {
     constructor(error: unknown) {
         if (error instanceof Error) {
@@ -19,18 +21,18 @@ export function handleMainActionError(error: unknown): void {
         for (const err of error.errors) {
             core.error(`Error ${error.errors.indexOf(err)}: ${err.message}`)
             if (err.stack) {
-                core.info(err.stack)
+                log.info(err.stack)
             }
         }
     } else if (error instanceof JobFailure) {
         state.setFailed(String(error))
         if (error.stack) {
-            core.info(error.stack)
+            log.info(error.stack)
         }
     } else {
         state.setFailed(String(error))
         if (error instanceof Error && error.stack) {
-            core.info(error.stack)
+            log.info(error.stack)
         }
     }
 }
@@ -39,12 +41,12 @@ export function handlePostActionError(error: unknown): void {
     if (error instanceof JobFailure) {
         state.setFailed(String(error))
         if (error.stack) {
-            core.info(error.stack)
+            log.info(error.stack)
         }
     } else {
-        core.warning(`Unhandled error in Gradle post-action - job will continue: ${error}`)
+        log.warn(`Unhandled error in Gradle post-action - job will continue: ${error}`)
         if (error instanceof Error && error.stack) {
-            core.info(error.stack)
+            log.info(error.stack)
         }
     }
 }

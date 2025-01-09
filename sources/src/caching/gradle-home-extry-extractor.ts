@@ -1,11 +1,12 @@
 import path from 'path'
 import fs from 'fs'
-import * as core from '@actions/core'
 import * as glob from '@actions/glob'
 
 import {CacheEntryListener, CacheListener} from './cache-reporting'
-import {cacheDebug, hashFileNames, isCacheDebuggingEnabled, restoreCache, saveCache, tryDelete} from './cache-utils'
+import {hashFileNames, restoreCache, saveCache, tryDelete} from './cache-utils'
 
+import {log} from '../env/logging'
+import {state} from '../env/state'
 import {BuildResult, loadBuildResults} from '../build-results'
 import {CacheConfig, ACTION_METADATA_DIR} from '../configuration'
 import {getCacheKeyBase} from './cache-key'
@@ -107,7 +108,7 @@ abstract class AbstractEntryExtractor {
             // Handle case where the extracted-cache-entry definitions have been changed
             const skipRestore = process.env[SKIP_RESTORE_VAR] || ''
             if (skipRestore.includes(artifactType)) {
-                core.info(`Not restoring extracted cache entry for ${artifactType}`)
+                log.info(`Not restoring extracted cache entry for ${artifactType}`)
                 entryListener.markRequested('SKIP_RESTORE')
             } else {
                 processes.push(
@@ -136,7 +137,7 @@ abstract class AbstractEntryExtractor {
         if (restoredEntry) {
             return new ExtractedCacheEntry(artifactType, pattern, cacheKey)
         } else {
-            core.info(`Did not restore ${artifactType} with key ${cacheKey} to ${pattern}`)
+            log.info(`Did not restore ${artifactType} with key ${cacheKey} to ${pattern}`)
             return new ExtractedCacheEntry(artifactType, pattern, undefined)
         }
     }
@@ -148,7 +149,7 @@ abstract class AbstractEntryExtractor {
     async extract(listener: CacheListener): Promise<void> {
         // Load the cache entry definitions (from config) and the previously restored entries (from persisted metadata file)
         const cacheEntryDefinitions = this.getExtractedCacheEntryDefinitions()
-        cacheDebug(
+        log.cacheDebug(
             `Extracting cache entries for ${this.extractorName}: ${JSON.stringify(cacheEntryDefinitions, null, 2)}`
         )
 
@@ -172,7 +173,7 @@ abstract class AbstractEntryExtractor {
             const matchingFiles = await globber.glob()
 
             if (matchingFiles.length === 0) {
-                cacheDebug(`No files found to cache for ${artifactType}`)
+                log.cacheDebug(`No files found to cache for ${artifactType}`)
                 continue
             }
 
@@ -228,7 +229,7 @@ abstract class AbstractEntryExtractor {
         )?.cacheKey
 
         if (previouslyRestoredKey === cacheKey) {
-            cacheDebug(`No change to previously restored ${artifactType}. Not saving.`)
+            log.cacheDebug(`No change to previously restored ${artifactType}. Not saving.`)
             entryListener.markNotSaved('contents unchanged')
         } else {
             await saveCache(pattern.split('\n'), cacheKey, entryListener)
@@ -245,7 +246,7 @@ abstract class AbstractEntryExtractor {
         const relativeFiles = files.map(x => path.relative(this.gradleUserHome, x))
         const key = hashFileNames(relativeFiles)
 
-        cacheDebug(`Generating cache key for ${artifactType} from file names: ${relativeFiles}`)
+        log.cacheDebug(`Generating cache key for ${artifactType} from file names: ${relativeFiles}`)
 
         return `${getCacheKeyBase(artifactType, CACHE_PROTOCOL_VERSION)}-${key}`
     }
@@ -253,14 +254,14 @@ abstract class AbstractEntryExtractor {
     protected async createCacheKeyFromFileContents(artifactType: string, pattern: string): Promise<string> {
         const key = await glob.hashFiles(pattern)
 
-        cacheDebug(`Generating cache key for ${artifactType} from files matching: ${pattern}`)
+        log.cacheDebug(`Generating cache key for ${artifactType} from files matching: ${pattern}`)
 
         return `${getCacheKeyBase(artifactType, CACHE_PROTOCOL_VERSION)}-${key}`
     }
 
     // Run actions sequentially if debugging is enabled
     private async awaitForDebugging(p: Promise<ExtractedCacheEntry>): Promise<ExtractedCacheEntry> {
-        if (isCacheDebuggingEnabled()) {
+        if (state.isCacheDebuggingEnabled()) {
             await p
         }
         return p
@@ -276,7 +277,7 @@ abstract class AbstractEntryExtractor {
         }
 
         const filedata = fs.readFileSync(cacheMetadataFile, 'utf-8')
-        cacheDebug(`Loaded cache metadata for ${this.extractorName}: ${filedata}`)
+        log.cacheDebug(`Loaded cache metadata for ${this.extractorName}: ${filedata}`)
         const extractedCacheEntryMetadata = JSON.parse(filedata) as ExtractedCacheEntryMetadata
         return extractedCacheEntryMetadata.entries
     }
@@ -289,7 +290,7 @@ abstract class AbstractEntryExtractor {
         extractedCacheEntryMetadata.entries = results.filter(x => x.cacheKey !== undefined)
 
         const filedata = JSON.stringify(extractedCacheEntryMetadata)
-        cacheDebug(`Saving cache metadata for ${this.extractorName}: ${filedata}`)
+        log.cacheDebug(`Saving cache metadata for ${this.extractorName}: ${filedata}`)
 
         fs.writeFileSync(this.getCacheMetadataFile(), filedata, 'utf-8')
     }
@@ -325,7 +326,7 @@ export class GradleHomeEntryExtractor extends AbstractEntryExtractor {
         })
 
         for (const wrapperZip of await globber.glob()) {
-            cacheDebug(`Deleting wrapper zip: ${wrapperZip}`)
+            log.cacheDebug(`Deleting wrapper zip: ${wrapperZip}`)
             await tryDelete(wrapperZip)
         }
     }
@@ -389,7 +390,7 @@ export class ConfigurationCacheEntryExtractor extends AbstractEntryExtractor {
     private markNotRestored(listener: CacheListener, reason: string): void {
         const cacheEntries = this.loadExtractedCacheEntries()
         if (cacheEntries.length > 0) {
-            core.info(`Not restoring configuration-cache state, as ${reason}`)
+            log.info(`Not restoring configuration-cache state, as ${reason}`)
             for (const cacheEntry of cacheEntries) {
                 listener.entry(cacheEntry.pattern).markNotRestored(reason)
             }
@@ -403,7 +404,7 @@ export class ConfigurationCacheEntryExtractor extends AbstractEntryExtractor {
         if (!this.cacheConfig.getCacheEncryptionKey()) {
             const cacheEntryDefinitions = this.getExtractedCacheEntryDefinitions()
             if (cacheEntryDefinitions.length > 0) {
-                core.info('Not saving configuration-cache state, as no encryption key was provided')
+                log.info('Not saving configuration-cache state, as no encryption key was provided')
                 for (const cacheEntry of cacheEntryDefinitions) {
                     listener.entry(cacheEntry.pattern).markNotSaved('No encryption key provided')
                 }
@@ -435,7 +436,7 @@ export class ConfigurationCacheEntryExtractor extends AbstractEntryExtractor {
                     return !versionIsAtLeast(result.gradleVersion, '8.6.0')
                 })
             ) {
-                core.info(
+                log.info(
                     `Not saving config-cache data for ${configCachePath}. Configuration cache data is only saved for Gradle 8.6+`
                 )
                 definition.notCacheableBecause('Configuration cache data only saved for Gradle 8.6+')
