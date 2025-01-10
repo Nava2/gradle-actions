@@ -75,27 +75,62 @@ export class CIState implements CIStateImplementation {
         this.impl = impl
     }
 
+    /**
+     * @inheritdoc
+     */
     isDebug(): boolean {
         return this.impl.isDebug()
     }
 
+    /**
+     * @inheritdoc
+     */
     get(key: string): string {
         return this.impl.get(key)
     }
 
+    /**
+     * @inheritdoc
+     */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     save(key: string, value: any): void {
         this.impl.save(key, value)
     }
 
+    /**
+     * @inheritdoc
+     */
     getInput(key: string, options?: CIStateInputOptions): string {
         return this.impl.getInput(key, options)
     }
 
+    /**
+     * @inheritdoc
+     */
     getMultilineInput(name: string, options?: CIStateInputOptions): string[] {
         return this.impl.getMultilineInput(name, options)
     }
 
+    /**
+     * @inheritdoc
+     */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    exportVariable(name: string, val: any): void {
+        return this.impl.exportVariable(name, val)
+    }
+
+    /**
+     * @inheritdoc
+     */
+    setFailed(message: string | Error): void {
+        return this.impl.setFailed(message)
+    }
+
+    /**
+     * Get's an input if it exists, otherwise returns `undefined`
+     * @param paramName Parameter name to [getInput].
+     * @returns Value stored, or `undefined` if not found.
+     */
     getOptionalInput(paramName: string): string | undefined {
         const paramValue = this.getInput(paramName)
         if (paramValue.length > 0) {
@@ -104,6 +139,12 @@ export class CIState implements CIStateImplementation {
         return undefined
     }
 
+    /**
+     * Gets an input as a boolean value.
+     * @param paramName Parameter name to [getInput].
+     * @param paramDefault Default value returned if not found.
+     * @returns Value stored, or [paramDefault] if not found.
+     */
     getBooleanInput(paramName: string, paramDefault = false): boolean {
         const paramValue = this.getInput(paramName)
         switch (paramValue.toLowerCase().trim()) {
@@ -117,20 +158,16 @@ export class CIState implements CIStateImplementation {
         throw TypeError(`The value '${paramValue} is not valid for '${paramName}. Valid values are: [true, false]`)
     }
 
+    /**
+     * Returns an optional boolean input.
+     * @param paramName Parameter name to [getInput].
+     * @returns The value stored or `undefined` if not found.
+     */
     getOptionalBooleanInput(paramName: string): boolean | undefined {
         const paramValue = this.getInput(paramName)
         if (paramValue === '') {
             return undefined
         }
         return this.getBooleanInput(paramName)
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    exportVariable(name: string, val: any): void {
-        return this.impl.exportVariable(name, val)
-    }
-
-    setFailed(message: string | Error): void {
-        return this.impl.setFailed(message)
     }
 }
