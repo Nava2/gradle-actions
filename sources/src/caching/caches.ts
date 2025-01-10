@@ -10,7 +10,7 @@ import {CacheCleaner} from './cache-cleaner'
 import {DaemonController} from '../daemon-controller'
 import {CacheConfig} from '../configuration'
 import {BuildResults} from '../build-results'
-import {state} from '../env/state'
+import {state} from '../env'
 
 const CACHE_RESTORED_VAR = 'GRADLE_BUILD_ACTION_CACHE_RESTORED'
 

@@ -4,7 +4,7 @@ import which from 'which'
 import * as semver from 'semver'
 import * as provisioner from './provision'
 import * as gradlew from './gradlew'
-import {state} from '../env/state'
+import {state} from '../env'
 
 export async function provisionAndMaybeExecute(
     gradleVersion: string,

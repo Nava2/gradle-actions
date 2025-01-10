@@ -10,7 +10,7 @@ import {saveCache, restoreCache, cacheDebug, isCacheDebuggingEnabled, tryDelete}
 import {CacheConfig, ACTION_METADATA_DIR} from '../configuration'
 import {GradleHomeEntryExtractor, ConfigurationCacheEntryExtractor} from './gradle-home-extry-extractor'
 import {getPredefinedToolchains, mergeToolchainContent, readResourceFileAsString} from './gradle-user-home-utils'
-import {state} from '../env/state'
+import {state} from '../env'
 
 const RESTORED_CACHE_KEY_KEY = 'restored-cache-key'
 

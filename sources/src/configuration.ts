@@ -3,7 +3,7 @@ import * as github from '@actions/github'
 import * as cache from '@actions/cache'
 import * as deprecator from './deprecation-collector'
 import {SUMMARY_ENV_VAR} from '@actions/core/lib/summary'
-import {state} from './env/state'
+import {state} from './env'
 
 import path from 'path'
 

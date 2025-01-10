@@ -18,7 +18,7 @@ import {
     getWorkspaceDirectory
 } from './configuration'
 import * as wrapperValidator from './wrapper-validation/wrapper-validator'
-import {state} from './env/state'
+import {state} from './env'
 
 const GRADLE_SETUP_VAR = 'GRADLE_BUILD_ACTION_SETUP_COMPLETED'
 const USER_HOME = 'USER_HOME'

@@ -11,7 +11,7 @@ import fs from 'fs'
 
 import {JobFailure} from './errors'
 import {DependencyGraphConfig, DependencyGraphOption, getGithubToken, getWorkspaceDirectory} from './configuration'
-import {state} from './env/state'
+import {state} from './env'
 
 const DEPENDENCY_GRAPH_PREFIX = 'dependency-graph_'
 
