@@ -1,1 +1,4 @@
-export {state, CIStateImplementation} from './state'
+import {CIState} from './state'
+
+export {CIStateInputOptions} from './state'
+export const state = new CIState()

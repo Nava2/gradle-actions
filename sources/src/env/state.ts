@@ -30,7 +30,7 @@ export interface CIStateImplementation {
      * @param options optional. See [GradleEnvInputOptions].
      * @returns The value of the input or `''` if not found.
      */
-    getInput(key: string, options?: GradleEnvInputOptions): string
+    getInput(key: string, options?: CIStateInputOptions): string
 
     /**
      * Gets the values of an multiline input.  Each value is also trimmed.
@@ -39,7 +39,7 @@ export interface CIStateImplementation {
      * @param     options  optional. See [GradleEnvInputOptions].
      * @returns   string[] Values stored, or empty array if not found.
      */
-    getMultilineInput(name: string, options?: GradleEnvInputOptions): string[]
+    getMultilineInput(name: string, options?: CIStateInputOptions): string[]
 
     /**
      * Sets env variable for this action and future actions in the job.
@@ -58,7 +58,7 @@ export interface CIStateImplementation {
     setFailed(message: string | Error): void
 }
 
-export interface GradleEnvInputOptions {
+export interface CIStateInputOptions {
     /**
      * True if input is required.
      */
@@ -68,7 +68,7 @@ export interface GradleEnvInputOptions {
 /**
  * Provides read/write access to saving state within the environment.
  */
-class CIState implements CIStateImplementation {
+export class CIState implements CIStateImplementation {
     private impl!: CIStateImplementation
 
     setImpl(impl: CIStateImplementation): void {
@@ -88,11 +88,11 @@ class CIState implements CIStateImplementation {
         this.impl.save(key, value)
     }
 
-    getInput(key: string, options?: GradleEnvInputOptions): string {
+    getInput(key: string, options?: CIStateInputOptions): string {
         return this.impl.getInput(key, options)
     }
 
-    getMultilineInput(name: string, options?: GradleEnvInputOptions): string[] {
+    getMultilineInput(name: string, options?: CIStateInputOptions): string[] {
         return this.impl.getMultilineInput(name, options)
     }
 
@@ -134,5 +134,3 @@ class CIState implements CIStateImplementation {
         return this.impl.setFailed(message)
     }
 }
-
-export const state = new CIState()
